@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#420D16">
+<title>Track Order — Khan</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="assets/products.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>renderChrome('track.html')</script>
+
+<section class="page-hero">
+  <div class="container"><h1>Track Your Order</h1><p>Enter your Order ID and the mobile number you used at checkout. Find your Order ID in the SMS we sent you.</p></div>
+</section>
+
+<section class="section" style="padding-top:44px">
+  <div class="container" style="max-width:680px">
+    <div class="panel">
+      <div class="form-grid">
+        <div><label class="fl">Order ID</label><input id="tCode" placeholder="ORD-261012-000001"></div>
+        <div><label class="fl">Mobile Number</label><input id="tPhone" placeholder="03xx-xxxxxxx"></div>
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="track()">Track Order</button>
+    </div>
+    <div id="tResult"></div>
+  </div>
+</section>
+
+<script>
+const STEPS=['Placed','Confirmed','Packed','Shipped','Delivered'];
+async function track(){
+  const code=$('#tCode').value.trim().toUpperCase(),phone=$('#tPhone').value.trim().replace(/[- ]/g,'');
+  const box=$('#tResult');
+  if(!code||!phone){box.innerHTML='<div class="panel" style="text-align:center;color:var(--muted)">Enter your Order ID and mobile number.</div>';return;}
+  try {
+    const response = window.KhanAPI && window.KhanAPI.trackOrder ? await window.KhanAPI.trackOrder(code, phone) : null;
+    const o = response || Orders.all().find(x=>x.code.toUpperCase()===code&&x.customer.phone.replace(/[- ]/g,'')===phone);
+    if(!o){box.innerHTML=`<div class="panel" style="text-align:center;color:var(--muted)">No order found for that ID + number. Double-check your SMS, or <a href="info.html#contact" style="color:var(--gold);font-weight:700">contact us</a>.</div>`;return}
+  const idx=o.status==='Cancelled'?-2:STEPS.indexOf(o.status);
+  const cancelled=o.status==='Cancelled';
+  box.innerHTML=`<div class="panel">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
+      <div><h3 style="margin:0">${o.code}</h3><span style="font-size:.82rem;color:var(--muted)">${o.customer.name} • ${o.customer.city} • ${new Date(o.createdAt).toLocaleDateString('en-PK')}</span></div>
+      <span class="pill ${o.status.toLowerCase()}">${o.status.toUpperCase()}</span>
+    </div>
+    ${cancelled?'<p style="color:var(--red);font-weight:700;margin-top:12px">This order was cancelled. If you paid, your refund is being processed.</p>':`
+    <div class="timeline">
+      ${STEPS.map((s,i)=>{
+        const ev=o.events.find(e=>e.s===s);
+        const cls=i<idx?'done':i===idx?(s==='Delivered'?'done':'now'):'pending';
+        return `<div class="tl-item ${cls}"><h4>${s}</h4><p>${ev?new Date(ev.at).toLocaleString('en-PK')+(ev.note?' — '+ev.note:''):(s==='Shipped'?'Waiting for courier handover':'Pending')}</p></div>`}).join('')}
+    </div>
+    ${o.cn?`<div style="background:var(--gold-pale);border:1px dashed var(--gold);border-radius:12px;padding:14px;font-size:.88rem">
+      <b>TCS Consignment Number (CN):</b> ${o.cn}<br>
+      <a href="https://www.tcsexpress.com/track" target="_blank" style="color:var(--maroon);font-weight:800">Track live on TCS →</a></div>`:'<p style="font-size:.82rem;color:var(--muted);margin-top:8px">Your CN number will appear here once the parcel is handed to TCS.</p>'}`}
+    <div style="margin-top:18px;border-top:1px dashed #e0d4bd;padding-top:14px">
+      ${o.items.map(i=>`<div class="summary-row"><span>${i.name} <small style="color:var(--muted)">(${i.size}/${i.color} ×${i.qty})</small></span><span>${rs(i.price*i.qty)}</span></div>`).join('')}
+      <div class="summary-row"><span>Delivery</span><span>${o.ship?rs(o.ship):'FREE'}</span></div>
+      <div class="summary-row total"><span>Total ${o.payment.method==='cod'?'(pay rider on delivery)':'('+o.payment.method+')'}</span><span>${rs(o.total)}</span></div>
+    </div>
+  </div>`;
+    box.scrollIntoView({behavior:'smooth',block:'start'});
+  } catch (error) {
+    box.innerHTML='<div class="panel" style="text-align:center;color:var(--muted)">The order service is unavailable right now. Please try again shortly.</div>';
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#420D16">
+<title>Admin Panel — Khan</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body style="background:var(--ivory)">
+<script src="assets/products.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+
+<div id="loginView" class="admin-login">
+  <div style="text-align:center;margin-bottom:22px">
+    <span class="logo-mark" style="width:56px;height:56px;font-size:1.6rem;display:inline-grid">خ</span>
+    <h2 style="margin-top:10px">Khan Admin</h2>
+    <p style="font-size:.82rem;color:var(--muted)">Sign in to manage products, orders & payments</p>
+  </div>
+  <label class="fl">Username</label><input id="aUser" value="owner" style="margin-bottom:12px">
+  <label class="fl">Password</label><input id="aPass" type="password" placeholder="Enter your admin password" onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="doLogin()">Sign In</button>
+  <p style="font-size:.72rem;color:var(--muted);text-align:center;margin-top:12px">Admin access is protected by your configured server account.</p>
+</div>
+
+<div id="appView" style="display:none">
+<div class="admin-shell">
+  <aside class="admin-side">
+    <a class="logo" href="index.html" style="padding:0 8px"><span class="logo-mark">خ</span><span class="logo-text">KHAN<small style="color:#c9ab9e">ADMIN</small></span></a>
+    <nav class="admin-nav" style="margin-top:24px">
+      <a href="#" class="on" data-tab="dash" onclick="showTab('dash',this)">📊 Dashboard</a>
+      <a href="#" data-tab="orders" onclick="showTab('orders',this)">🧾 Orders <span id="ordBadge" class="pill awaiting" style="margin-left:4px;display:none">0</span></a>
+      <a href="#" data-tab="payments" onclick="showTab('payments',this)">💳 Payment Verification</a>
+      <a href="#" data-tab="products" onclick="showTab('products',this)">👕 Products & Stock</a>
+      <a href="index.html" style="margin-top:20px">🏬 View Store</a>
+      <a href="#" onclick="logout()">🚪 Logout</a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    <!-- DASHBOARD -->
+    <section id="tab-dash">
+      <h2 style="margin-bottom:20px">Dashboard</h2>
+      <div class="stat-grid" id="stats"></div>
+      <div class="sec-head" style="margin-bottom:14px"><h3>Recent Orders</h3></div>
+      <div class="table-wrap"><table class="adm" id="recentTable"></table></div>
+    </section>
+
+    <!-- ORDERS -->
+    <section id="tab-orders" style="display:none">
+      <h2 style="margin-bottom:20px">Orders</h2>
+      <div class="chip-row" style="margin-bottom:16px" id="ordFilters">
+        <button class="chip on" data-v="">All</button>
+        <button class="chip" data-v="Placed">Placed</button>
+        <button class="chip" data-v="Confirmed">Confirmed</button>
+        <button class="chip" data-v="Packed">Packed</button>
+        <button class="chip" data-v="Shipped">Shipped</button>
+        <button class="chip" data-v="Delivered">Delivered</button>
+        <button class="chip" data-v="Cancelled">Cancelled</button>
+      </div>
+      <div class="table-wrap"><table class="adm" id="ordTable"></table></div>
+    </section>
+
+    <!-- PAYMENTS -->
+    <section id="tab-payments" style="display:none">
+      <h2 style="margin-bottom:20px">Payment Verification Queue</h2>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px">Verify each transaction inside the JazzCash/Easypaisa app before approving. Duplicate Transaction IDs are blocked automatically.</p>
+      <div class="table-wrap"><table class="adm" id="payTable"></table></div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section id="tab-products" style="display:none">
+      <div class="sec-head" style="margin-bottom:20px"><h2>Products & Stock</h2>
+        <button class="btn btn-primary btn-sm" onclick="toast('Product editor is a demo — full CRUD ships with the PostgreSQL backend (FR-ADM-2/3/4)')">+ Add Product</button></div>
+      <div class="table-wrap"><table class="adm" id="prodTable"></table></div>
+    </section>
+  </main>
+</div>
+</div>
+
+async function doLogin(){
+  const username=$('#aUser').value.trim();
+  const password=$('#aPass').value.trim();
+  if(!username||!password){toast('Enter your admin username and password');return;}
+  try {
+    const response=await window.KhanAPI.adminLogin({username,password});
+    sessionStorage.setItem('khan_admin_token', response && response.token ? response.token : '');
+    boot();
+  } catch (error) {
+    toast(error.message || 'Admin login failed');
+  }
+}
+function logout(){sessionStorage.removeItem('khan_admin_token');location.reload()}
+function boot(){
+  $('#loginView').style.display='none';
+  $('#appView').style.display='block';
+  renderAll();
+}
+if(sessionStorage.getItem('khan_admin_token'))boot();
+
+function showTab(t,el){$$('.admin-main section').forEach(s=>s.style.display='none');$('#tab-'+t).style.display='block';
+  $$('.admin-nav a').forEach(a=>a.classList.remove('on'));el.classList.add('on')}
+
+async function renderAll(){
+  try {
+    const [orders, payments] = await Promise.all([
+      window.KhanAPI ? window.KhanAPI.adminOrders() : Promise.resolve([]),
+      window.KhanAPI ? window.KhanAPI.adminPayments() : Promise.resolve([]),
+    ]);
+    Orders.save(Array.isArray(orders) ? orders : []);
+    renderDash();
+    renderOrders('');
+    renderPayments(Array.isArray(payments) ? payments : []);
+    renderProducts();
+  } catch (error) {
+    console.error('[admin]', error);
+    if (error.status === 401) {
+      sessionStorage.removeItem('khan_admin_token');
+      $('#loginView').style.display='block';
+      $('#appView').style.display='none';
+      toast('Your admin session expired. Please sign in again.');
+      return;
+    }
+    Orders.save([]);
+    renderDash();
+    renderOrders('');
+    renderPayments([]);
+    renderProducts();
+  }
+}
+function esc(s){return String(s??'').replace(/</g,'&lt;')}
+
+function renderDash(){
+  const all=Orders.all();
+  const today=all.filter(o=>new Date(o.createdAt).toDateString()===new Date().toDateString());
+  const rev=all.filter(o=>!['Cancelled'].includes(o.status)).reduce((a,o)=>a+o.total,0);
+  const pendingPay=all.filter(o=>o.payment.status==='Awaiting Verification').length;
+  const awaiting=all.filter(o=>['Placed','Confirmed','Packed'].includes(o.status)).length;
+  $('#stats').innerHTML=`
+    <div class="stat-card"><div class="k">Today's Orders</div><div class="v">${today.length}</div><div class="s">Revenue today: ${rs(today.reduce((a,o)=>a+o.total,0))}</div></div>
+    <div class="stat-card"><div class="k">Total Revenue</div><div class="v">${(rev/1000).toFixed(1)}k</div><div class="s">All confirmed orders</div></div>
+    <div class="stat-card"><div class="k">Awaiting Action</div><div class="v">${awaiting}</div><div class="s">Confirm / pack / ship</div></div>
+    <div class="stat-card"><div class="k">Payments to Verify</div><div class="v">${pendingPay}</div><div class="s">JazzCash / Easypaisa</div></div>`;
+  const badge=$('#ordBadge');badge.style.display=pendingPay?'inline-block':'none';badge.textContent=pendingPay;
+  $('#recentTable').innerHTML=`<tr><th>Order</th><th>Customer</th><th>City</th><th>Payment</th><th>Total</th><th>Status</th></tr>`+
+    all.slice(0,5).map(o=>`<tr><td><b>${o.code}</b><br><small style="color:var(--muted)">${new Date(o.createdAt).toLocaleString('en-PK')}</small></td>
+      <td>${esc(o.customer.name)}<br><small style="color:var(--muted)">${o.customer.phone}</small></td><td>${o.customer.city}</td>
+      <td>${payPill(o)}</td><td><b>${rs(o.total)}</b></td><td><span class="pill ${o.status.toLowerCase()}">${o.status}</span></td></tr>`).join('');
+}
+function payPill(o){const map={Pending:'pending',Paid:'paid','Awaiting Verification':'awaiting',Rejected:'rejected',Failed:'rejected'};
+  return `<span class="pill ${map[o.payment.status]||'pending'}">${o.payment.method==='cod'?'COD':o.payment.method} • ${o.payment.status}</span>`}
+
+let ordFilter='';
+$('#ordFilters').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;
+  $$('#ordFilters .chip').forEach(c=>c.classList.remove('on'));b.classList.add('on');ordFilter=b.dataset.v;renderOrders(ordFilter)});
+
+function renderOrders(f){
+  const all=Orders.all().filter(o=>!f||o.status===f);
+  $('#ordTable').innerHTML=`<tr><th>Order</th><th>Customer / Address</th><th>Items</th><th>Payment</th><th>Status & Actions</th></tr>`+
+   (all.length?all.map(o=>`<tr>
+    <td><b>${o.code}</b><br><small style="color:var(--muted)">${new Date(o.createdAt).toLocaleString('en-PK')}</small>${o.cn?`<br><small style="color:var(--green);font-weight:700">CN: ${o.cn}</small>`:''}</td>
+    <td><b>${esc(o.customer.name)}</b><br><small style="color:var(--muted)">${o.customer.phone}<br>${esc(o.customer.addr)}, ${o.customer.city}</small></td>
+    <td>${o.items.map(i=>`${i.name} <small style="color:var(--muted)">(${i.size}/${i.color} ×${i.qty})</small>`).join('<br>')}<br><b>${rs(o.total)}</b></td>
+    <td>${payPill(o)}${o.payment.txn?`<br><small style="color:var(--muted)">TXN: ${o.payment.txn}</small>`:''}</td>
+    <td style="min-width:220px"><span class="pill ${o.status.toLowerCase()}">${o.status}</span><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+      ${o.status==='Placed'?`<button class="btn btn-ghost btn-sm" onclick="adv('${o.code}','Confirmed','Confirmed by phone')">Confirm</button>`:''}
+      ${o.status==='Confirmed'?`<button class="btn btn-ghost btn-sm" onclick="adv('${o.code}','Packed','Packed & quality checked')">Mark Packed</button>`:''}
+      ${o.status==='Packed'?`<input class="cn-input" id="cn-${o.code}" placeholder="Enter TCS CN" style="margin-bottom:6px"><button class="btn btn-primary btn-sm" onclick="ship('${o.code}')">Ship</button>`:''}
+      ${o.status==='Shipped'?`<button class="btn btn-ghost btn-sm" onclick="adv('${o.code}','Delivered','Delivered to customer')">Mark Delivered</button>`:''}
+      ${!['Delivered','Cancelled'].includes(o.status)?`<button class="btn btn-sm" style="color:var(--red);border:1.5px solid #e5b3b0" onclick="adv('${o.code}','Cancelled','Cancelled by admin')">Cancel</button>`:''}
+      <button class="btn btn-gold btn-sm" onclick="printSlip('${o.code}')">Packing Slip</button>
+    </div></td></tr>`).join('')
+   :'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">No orders in this view.</td></tr>');
+}
+async function adv(code,status,note){
+  try {
+    await window.KhanAPI.updateOrderStatus(code,status,note);
+    await renderAll();
+    toast(code+' → '+status,true);
+  } catch(error) { toast(error.message || 'Could not update order status'); }
+}
+async function ship(code){
+  const cn=$('#cn-'+code).value.trim();
+  if(cn.length<8){toast('Enter a valid CN (min 8 digits)');return}
+  try {
+    await window.KhanAPI.shipOrder(code,cn);
+    await renderAll();
+    toast('Shipped with CN '+cn,true);
+  } catch(error) { toast(error.message || 'Could not mark order shipped'); }
+}
+function printSlip(code){
+  const o=Orders.all().find(x=>x.code===code);if(!o)return;
+  const w=open('','_blank','width=420,height=640');
+  w.document.write(`<html><head><title>Packing Slip ${o.code}</title><style>body{font-family:Arial;padding:28px;font-size:13px}h2{color:#7B1E2B;margin:0}table{width:100%;border-collapse:collapse;margin-top:12px}td,th{border:1px solid #ccc;padding:6px;text-align:left}</style></head><body>
+  <h2>KHAN — Packing Slip</h2><small>Khan Clothing (Pvt) Ltd, Faisalabad • 0300-1234567</small><hr>
+  <b>Order:</b> ${o.code}<br><b>Date:</b> ${new Date(o.createdAt).toLocaleString('en-PK')}<br>
+  <b>Customer:</b> ${esc(o.customer.name)} — ${o.customer.phone}<br><b>Address:</b> ${esc(o.customer.addr)}, ${o.customer.city}<br>
+  <b>Payment:</b> ${o.payment.method.toUpperCase()} (${o.payment.status}) — ${rs(o.total)}${o.payment.method==='cod'?'<br><b>COLLECT CASH: '+rs(o.total)+'</b>':''}
+  <table><tr><th>Item</th><th>Size/Colour</th><th>Qty</th><th>Amount</th></tr>
+  ${o.items.map(i=>`<tr><td>${i.name}</td><td>${i.size}/${i.color}</td><td>${i.qty}</td><td>${rs(i.price*i.qty)}</td></tr>`).join('')}
+  <tr><td colspan="3" style="text-align:right"><b>Delivery</b></td><td>${o.ship?rs(o.ship):'FREE'}</td></tr>
+  <tr><td colspan="3" style="text-align:right"><b>Total</b></td><td><b>${rs(o.total)}</b></td></tr></table>
+  <p style="margin-top:18px;font-size:11px;color:#666">Copy this slip into your TCS booking. Double-check the CN before saving.</p>
+  </body></html>`);
+  w.document.close();w.print();
+}
+function renderPayments(queue=[]){
+  const q=Array.isArray(queue)&&queue.length?queue:Orders.all().filter(o=>o.payment && o.payment.status==='Awaiting Verification');
+  $('#payTable').innerHTML=`<tr><th>Order</th><th>Method</th><th>TXN ID</th><th>Sender</th><th>Amount</th><th>Actions</th></tr>`+
+   (q.length?q.map(o=>`<tr>
+    <td><b>${o.code}</b><br><small style="color:var(--muted)">${new Date(o.createdAt).toLocaleString('en-PK')}</small></td>
+    <td style="text-transform:capitalize">${o.payment.method}</td>
+    <td><b>${o.payment.txn||'—'}</b><br><small style="color:var(--muted)">screenshot on file</small></td>
+    <td>${o.payment.sender}</td><td><b>${rs(o.total)}</b></td>
+    <td><button class="btn btn-sm approve" onclick="verdict('${o.code}',true)">✓ Approve (Paid)</button>
+        <button class="btn btn-sm reject" style="margin-left:8px" onclick="verdict('${o.code}',false)">✕ Reject</button></td></tr>`).join('')
+   :'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">Queue is clear — no payments awaiting verification. 🎉</td></tr>');
+}
+async function verdict(code,ok){
+  try {
+    if (window.KhanAPI && window.KhanAPI.verifyPayment) {
+      await window.KhanAPI.verifyPayment(code, ok);
+    }
+    renderAll();
+    toast(code+' payment '+(ok?'APPROVED ✓':'rejected'),ok);
+  } catch (error) {
+    toast(error.message || 'Payment verification failed');
+  }
+}
+function renderProducts(){
+  $('#prodTable').innerHTML=`<tr><th>Product</th><th>Code</th><th>Price</th><th>Stock by Size</th><th>Status</th></tr>`+
+   PRODUCTS.map(p=>{const tot=p.sizes.reduce((a,s)=>a+s.q,0);const low=p.sizes.filter(s=>s.q>0&&s.q<=2).length;
+    return `<tr><td style="display:flex;gap:10px;align-items:center"><img src="${p.img}" style="width:44px;height:56px;object-fit:cover;object-position:top;border-radius:8px"><b>${p.name}</b></td>
+    <td><small>${p.id}</small></td><td><b>${rs(p.sale??p.price)}</b>${p.sale?`<br><small style="text-decoration:line-through;color:var(--muted)">${rs(p.price)}</small>`:''}</td>
+    <td>${p.sizes.map(s=>`<span class="pill ${s.q===0?'cancelled':s.q<=2?'awaiting':'delivered'}" style="margin:2px">${s.s}: ${s.q}</span>`).join('')}</td>
+    <td>${tot===0?'<span class="pill cancelled">OUT OF STOCK</span>':low?`<span class="pill awaiting">LOW STOCK (${tot})</span>`:`<span class="pill delivered">ACTIVE (${tot})</span>`}</td></tr>`}).join('');
+}
+</script>
+</body>
+</html>

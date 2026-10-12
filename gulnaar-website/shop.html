@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#420D16">
+<title>Shop — Khan</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="assets/products.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>renderChrome('shop.html')</script>
+
+<section class="page-hero">
+  <div class="container">
+    <h1 id="shopTitle">Shop All</h1>
+    <p>Premium fabrics, honest prices, nationwide delivery. Filter by size, colour, and price to find your fit.</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top:40px">
+  <div class="container shop-layout">
+    <aside class="filters">
+      <h4>Search</h4>
+      <div class="search-wrap"><span class="si">⌕</span><input id="fSearch" placeholder="Product or code…" oninput="applyFilters()"></div>
+      <h4>Category</h4>
+      <div class="chip-row" id="fCat">
+        <button class="chip on" data-v="all">All</button>
+        <button class="chip" data-v="men">Men</button>
+        <button class="chip" data-v="women">Women</button>
+      </div>
+      <h4>Size</h4>
+      <div class="chip-row" id="fSize">
+        <button class="chip on" data-v="any">Any</button>
+        <button class="chip" data-v="XS">XS</button><button class="chip" data-v="S">S</button><button class="chip" data-v="M">M</button><button class="chip" data-v="L">L</button><button class="chip" data-v="XL">XL</button><button class="chip" data-v="XXL">XXL</button>
+      </div>
+      <h4>Colour</h4>
+      <div class="chip-row" id="fColor">
+        <button class="chip on" data-v="any">Any</button>
+        <button class="chip" data-v="Black">Black</button><button class="chip" data-v="White">White</button><button class="chip" data-v="Off-White">Off-White</button><button class="chip" data-v="Teal">Teal</button><button class="chip" data-v="Maroon">Maroon</button><button class="chip" data-v="Emerald">Emerald</button><button class="chip" data-v="Mint">Mint</button><button class="chip" data-v="Olive">Olive</button>
+      </div>
+      <h4>Max Price: <span id="priceVal">Rs 15,000</span></h4>
+      <div class="range-wrap"><input type="range" id="fPrice" min="3000" max="13000" step="250" value="13000" oninput="applyFilters()"></div>
+      <h4>Offers</h4>
+      <label style="display:flex;gap:8px;align-items:center;font-size:.88rem;padding:6px 0"><input type="checkbox" id="fSale" style="width:auto" onchange="applyFilters()"> On Sale</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:.88rem;padding:6px 0"><input type="checkbox" id="fNew" style="width:auto" onchange="applyFilters()"> New Arrivals</label>
+      <button class="btn btn-ghost btn-sm btn-block" style="margin-top:12px" onclick="resetFilters()">Reset Filters</button>
+    </aside>
+
+    <div>
+      <div class="toolbar">
+        <span class="count" id="count"></span>
+        <select id="fSort" onchange="applyFilters()" style="width:auto;padding:10px 14px">
+          <option value="pop">Sort: Popularity</option>
+          <option value="new">Sort: Newest</option>
+          <option value="low">Price: Low → High</option>
+          <option value="high">Price: High → Low</option>
+          <option value="rate">Top Rated</option>
+        </select>
+      </div>
+      <div class="grid-products" id="grid"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+const qs=new URLSearchParams(location.search);
+let state={cat:qs.get('cat')||'all',size:'any',color:'any',max:13000,sale:qs.get('sale')==='1',isNew:qs.get('new')==='1',q:'',sort:'pop'};
+$('#fSale').checked=state.sale; $('#fNew').checked=state.isNew;
+if(state.sale)$('#shopTitle').textContent='The Sale Room';
+if(state.isNew)$('#shopTitle').textContent='New Arrivals';
+if(state.cat!=='all')setChips('#fCat',state.cat);
+
+function setChips(sel,val){$$(sel+' .chip').forEach(c=>c.classList.toggle('on',c.dataset.v===val))}
+['#fCat','#fSize','#fColor'].forEach(sel=>{
+  $(sel).addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;setChips(sel,b.dataset.v);
+    if(sel==='#fCat')state.cat=b.dataset.v; if(sel==='#fSize')state.size=b.dataset.v; if(sel==='#fColor')state.color=b.dataset.v; applyFilters()});
+});
+function resetFilters(){location.href='shop.html'}
+
+async function applyFilters(){
+  const catalog = await loadProductCatalog();
+  state.max=+$('#fPrice').value; state.q=$('#fSearch').value.trim().toLowerCase();
+  state.sale=$('#fSale').checked; state.isNew=$('#fNew').checked; state.sort=$('#fSort').value;
+  $('#priceVal').textContent=rs(state.max);
+  let list = (Array.isArray(catalog) ? catalog : []).filter(p=>{
+    if(state.cat!=='all'&&p.cat!==state.cat)return false;
+    if(state.size!=='any'&&!p.sizes.some(s=>s.s===state.size&&s.q>0))return false;
+    if(state.color!=='any'&&!p.colors.some(c=>c.n===state.color))return false;
+    if((p.sale??p.price)>state.max)return false;
+    if(state.sale&&!p.sale)return false;
+    if(state.isNew&&!p.isNew)return false;
+    if(state.q&&!(p.name.toLowerCase().includes(state.q)||p.id.toLowerCase().includes(state.q)))return false;
+    return true;
+  });
+  const sorts={pop:(a,b)=>b.rc*b.rating-a.rc*a.rating,new:(a,b)=>(b.isNew-a.isNew)||b.id.localeCompare(a.id),
+    low:(a,b)=>(a.sale??a.price)-(b.sale??b.price),high:(a,b)=>(b.sale??b.price)-(a.sale??a.price),rate:(a,b)=>b.rating-a.rating};
+  list.sort(sorts[state.sort]);
+  $('#count').textContent=list.length+' product'+(list.length!==1?'s':'');
+  $('#grid').innerHTML=list.length?list.map(cardHTML).join(''):'<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 0">No products match your filters. Try resetting.</p>';
+  initReveal();
+}
+applyFilters();
+</script>
+</body>
+</html>

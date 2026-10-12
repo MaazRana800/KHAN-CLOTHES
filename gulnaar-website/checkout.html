@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#420D16">
+<title>Secure Checkout — Khan</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="assets/products.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>renderChrome('checkout.html')</script>
+
+<section class="page-hero">
+  <div class="container"><h1>Secure Checkout</h1><p>Cash on Delivery, JazzCash, Easypaisa, or Bank Transfer — your order is confirmed instantly.</p></div>
+</section>
+
+<section class="section" style="padding-top:40px" id="ckRoot">
+  <div class="container checkout-layout">
+    <div>
+      <div class="panel">
+        <h3><span class="step-no">1</span> Delivery Details</h3>
+        <div class="form-grid">
+          <div><label class="fl">Full Name *</label><input id="cName" placeholder="e.g. Muhammad Ahmed"></div>
+          <div><label class="fl">Mobile Number *</label><input id="cPhone" placeholder="03xx-xxxxxxx"></div>
+          <div class="full"><label class="fl">Complete Address *</label><input id="cAddr" placeholder="House, street, area"></div>
+          <div><label class="fl">Province *</label><select id="cProv"><option>Punjab</option><option>Sindh</option><option>Khyber Pakhtunkhwa</option><option>Balochistan</option><option>Islamabad (ICT)</option><option>Gilgit-Baltistan</option><option>AJK</option></select></div>
+          <div><label class="fl">City (TCS Serviceable) *</label><select id="cCity" onchange="recalc()"></select></div>
+          <div class="full"><label class="fl">Order Notes</label><input id="cNotes" placeholder="Optional — e.g. call before delivery"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3><span class="step-no">2</span> Payment Method</h3>
+        <label class="pay-opt on"><input type="radio" name="pay" value="cod" checked onchange="payChange(this)">
+          <span><span class="t">💵 Cash on Delivery</span><span class="d" style="display:block">Pay the TCS rider when your parcel arrives. Most trusted in Pakistan. Max ${rs(PAY_SETTINGS.cod.limit)} per order.</span></span></label>
+        <label class="pay-opt"><input type="radio" name="pay" value="jazzcash" onchange="payChange(this)">
+          <span><span class="t">📱 JazzCash (Manual)</span><span class="d" style="display:block">Send money to our JazzCash account, then enter your Transaction ID below.</span></span></label>
+        <div class="wallet-box" id="wb-jazzcash">Send <b id="wj-amt"></b> to <b>JazzCash ${PAY_SETTINGS.jazzcash.number}</b> — ${PAY_SETTINGS.jazzcash.title}.<br>Then enter your sender number & Transaction ID:</div>
+        <label class="pay-opt"><input type="radio" name="pay" value="easypaisa" onchange="payChange(this)">
+          <span><span class="t">📱 Easypaisa (Manual)</span><span class="d" style="display:block">Send money to our Easypaisa account, then enter your Transaction ID below.</span></span></label>
+        <div class="wallet-box" id="wb-easypaisa">Send <b id="we-amt"></b> to <b>Easypaisa ${PAY_SETTINGS.easypaisa.number}</b> — ${PAY_SETTINGS.easypaisa.title}.<br>Then enter your sender number & Transaction ID:</div>
+        <label class="pay-opt"><input type="radio" name="pay" value="bank" onchange="payChange(this)">
+          <span><span class="t">🏦 Bank Transfer</span><span class="d" style="display:block">Transfer to our bank account and upload your receipt screenshot.</span></span></label>
+        <div class="wallet-box" id="wb-bank"><b>${PAY_SETTINGS.bank.bank}</b><br>Account: <b>${PAY_SETTINGS.bank.account}</b><br>Title: ${PAY_SETTINGS.bank.title}<br>Upload your receipt below after transfer.</div>
+
+        <div id="manualFields" style="display:none;margin-top:14px">
+          <div class="form-grid">
+            <div><label class="fl">Sender Mobile Number *</label><input id="cSender" placeholder="03xx-xxxxxxx"></div>
+            <div><label class="fl">Transaction ID *</label><input id="cTxn" placeholder="e.g. 88452319012"></div>
+            <div class="full"><label class="fl">Payment Screenshot / Receipt</label><input type="file" id="cShot" accept="image/*" style="padding:9px"><small style="color:var(--muted)">JPG/PNG, max 5 MB. Verified by our team within a few hours.</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h3><span class="step-no">3</span> Order Summary</h3>
+        <div id="ckItems"></div>
+        <div class="coupon-row"><input id="cCoupon" placeholder="Coupon code — try KHAN10"><button class="btn btn-ghost btn-sm" onclick="applyCoupon()">Apply</button></div>
+        <div id="couponMsg" style="font-size:.8rem;margin-bottom:6px"></div>
+        <div class="summary-row"><span>Subtotal</span><span id="sSub"></span></div>
+        <div class="summary-row" id="sDiscRow" style="display:none;color:var(--green)"><span>Discount</span><span id="sDisc"></span></div>
+        <div class="summary-row"><span>Delivery (TCS)</span><span id="sShip"></span></div>
+        <div class="summary-row" id="sCodRow" style="display:none"><span>COD Fee</span><span id="sCod"></span></div>
+        <div class="summary-row total"><span>Total</span><span id="sTotal"></span></div>
+        <label style="display:flex;gap:10px;align-items:flex-start;font-size:.82rem;margin:14px 0;color:var(--muted)">
+          <input type="checkbox" id="cTerms" style="width:auto;margin-top:3px">
+          <span>I agree to the <a href="info.html#returns" style="color:var(--gold);font-weight:700">Exchange Policy</a> and confirm my address & phone number are correct.</span>
+        </label>
+        <button class="btn btn-primary btn-block" id="placeBtn" onclick="placeOrder()">Place Order</button>
+        <p style="text-align:center;font-size:.72rem;color:var(--muted);margin-top:10px">🔒 Server-validated pricing & stock • Prices re-checked at confirmation</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+$('#cCity').innerHTML=PAY_SETTINGS.cities.map(c=>`<option>${c.n}</option>`).join('');
+let coupon=null, shipFee=200, payMethod='cod';
+
+function renderSummary(){
+  const items=Cart.items();
+  $('#ckItems').innerHTML=items.map(i=>`<div class="summary-row"><span>${i.name} <small style="color:var(--muted)">(${i.size}/${i.color} ×${i.qty})</small></span><span>${rs(i.price*i.qty)}</span></div>`).join('')||'<p style="color:var(--muted);font-size:.88rem">Your bag is empty. <a href="shop.html" style="color:var(--gold);font-weight:700">Shop now →</a></p>';
+  const sub=Cart.subtotal();
+  let disc=0;
+  if(coupon){if(coupon.type==='percent')disc=Math.round(sub*coupon.value/100);else if(coupon.type==='fixed')disc=coupon.value}
+  const city=PAY_SETTINGS.cities.find(c=>c.n===$('#cCity').value)||PAY_SETTINGS.cities[0];
+  shipFee=(sub-disc)>=PAY_SETTINGS.freeShipAbove||coupon?.type==='ship'?0:city.fee;
+  const codFee=payMethod==='cod'?PAY_SETTINGS.cod.fee:0;
+  $('#sSub').textContent=rs(sub);
+  $('#sDiscRow').style.display=disc?'flex':'none'; $('#sDisc').textContent='−'+rs(disc);
+  $('#sShip').textContent=shipFee?rs(shipFee):'FREE';
+  $('#sCodRow').style.display=codFee?'flex':'none'; $('#sCod').textContent=rs(codFee);
+  $('#sTotal').textContent=rs(sub-disc+shipFee+codFee);
+  $('#wj-amt').textContent=rs(sub-disc+shipFee); $('#we-amt').textContent=rs(sub-disc+shipFee);
+  return sub-disc+shipFee+codFee;
+}
+function recalc(){renderSummary()}
+function payChange(el){
+  payMethod=el.value;
+  $$('.pay-opt').forEach(o=>o.classList.toggle('on',o.querySelector('input').checked));
+  ['jazzcash','easypaisa','bank'].forEach(m=>$('#wb-'+m)?.classList.toggle('show',payMethod===m));
+  $('#manualFields').style.display=(payMethod==='jazzcash'||payMethod==='easypaisa'||payMethod==='bank')?'block':'none';
+  renderSummary();
+}
+function applyCoupon(){
+  const code=$('#cCoupon').value.trim().toUpperCase();
+  const c=COUPONS[code];
+  if(!c){$('#couponMsg').innerHTML='<span style="color:var(--red)">Invalid coupon code.</span>';coupon=null}
+  else if(Cart.subtotal()<c.min){$('#couponMsg').innerHTML=`<span style="color:var(--red)">Minimum order ${rs(c.min)} required.</span>`;coupon=null}
+  else{coupon=c;$('#couponMsg').innerHTML=`<span style="color:var(--green)">✓ Coupon ${code} applied!</span>`}
+  renderSummary();
+}
+async function placeOrder(){
+  const items=Cart.items();
+  if(!items.length){toast('Your bag is empty');return}
+  const name=$('#cName').value.trim(),phone=$('#cPhone').value.trim(),addr=$('#cAddr').value.trim();
+  if(!name||!/^03\d{9}$/.test(phone.replace(/[- ]/g,''))||!addr){toast('Please fill name, valid mobile (03xx…) and address');return}
+  if(!$('#cTerms').checked){toast('Please accept the exchange policy');return}
+  let payment={method:payMethod,status:payMethod==='cod'?'Pending':'Awaiting Verification',txn:'',sender:''};
+  if(payMethod!=='cod'){
+    payment.sender=$('#cSender').value.trim(); payment.txn=$('#cTxn').value.trim();
+    if(!/^03\d{9}$/.test(payment.sender.replace(/[- ]/g,''))||payment.txn.length<5){toast('Enter valid sender number & Transaction ID');return}
+  }
+  const sub=Cart.subtotal(); let disc=0;
+  if(coupon){disc=coupon.type==='percent'?Math.round(sub*coupon.value/100):(coupon.type==='fixed'?coupon.value:0)}
+  const total=sub-disc+shipFee+(payMethod==='cod'?PAY_SETTINGS.cod.fee:0);
+  try {
+    const order=await Orders.create({customer:{name,phone,addr,prov:$('#cProv').value,city:$('#cCity').value,notes:$('#cNotes').value.trim()},
+      items,payment,coupon:coupon?$('#cCoupon').value.trim().toUpperCase():'',subtotal:sub,discount:disc,ship:shipFee,total});
+    Cart.clear();
+    $('#ckRoot').innerHTML=`<div class="container" style="max-width:640px;text-align:center;padding:70px 0">
+      <div style="font-size:4rem">✅</div>
+      <h1 style="margin:14px 0">Order Placed — Shukriya!</h1>
+      <p style="color:var(--muted)">Your Order ID is</p>
+      <div style="font-family:var(--font-head);font-size:2rem;color:var(--maroon);letter-spacing:.05em;margin:8px 0 20px">${order.code}</div>
+      <p style="color:var(--muted);font-size:.92rem">${payMethod==='cod'
+        ?'Our team will call you shortly to confirm. Keep '+rs(order.total)+' ready for the TCS rider.'
+        :'Your payment is <b>Awaiting Verification</b>. Our team will verify your '+payMethod+' transaction and confirm your order shortly.'}</p>
+      <p style="color:var(--muted);font-size:.85rem;margin-top:8px">Confirmation SMS sent to ${phone} after backend confirmation.</p>
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:26px;flex-wrap:wrap">
+        <a class="btn btn-primary" href="track.html">Track Your Order</a>
+        <a class="btn btn-ghost" href="shop.html">Continue Shopping</a>
+      </div></div>`;
+    scrollTo({top:0,behavior:'smooth'});
+  } catch (error) {
+    toast(error.message || 'Order could not be submitted. Please try again.');
+  }
+}
+renderSummary();
+document.addEventListener('cart:change',renderSummary);
+</script>
+</body>
+</html>

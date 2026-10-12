@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#420D16">
+<title>Product — Khan</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="assets/products.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>renderChrome('shop.html')</script>
+
+<div class="container" id="pdRoot"></div>
+
+<script>
+(async function(){
+  const catalog = await loadProductCatalog();
+  const pid=new URLSearchParams(location.search).get('id');
+  const p=(catalog.find(x=>x.id===pid)||catalog[0]);
+  if(!p){ $('#pdRoot').innerHTML='<div class="panel" style="margin-top:30px;text-align:center;color:var(--muted)">Product not found or backend inventory is not available.</div>'; return; }
+  let sel={size:null,color:p.colors[0].n,qty:1};
+
+  document.title=p.name+' — Khan';
+  const rel = catalog.filter(x=>x.cat===p.cat&&x.id!==p.id).slice(0,4);
+  const inStock=s=>p.sizes.find(x=>x.s===s)?.q??0;
+  const defSize=p.sizes.find(s=>s.q>0)?.s; sel.size=defSize;
+
+  $('#pdRoot').innerHTML=`
+<div class="breadcrumb"><a href="index.html">Home</a> / <a href="shop.html">Shop</a> / <a href="shop.html?cat=${p.cat}">${p.cat==='men'?'Men':'Women'}</a> / ${p.name}</div>
+<div class="pd-layout">
+  <div class="pd-gallery reveal in">
+    <div class="pd-main"><img id="pdImg" src="${p.img}" alt="${p.name}"></div>
+    <div class="pd-thumbs">${[p.img,'assets/img/kurta-white-emb.jpg','assets/img/lawn-teal.jpg'].map((im,i)=>`<img src="${im}" class="${i===0?'on':''}" onclick="swapImg(this,'${im}')">`).join('')}</div>
+  </div>
+  <div>
+    <span class="p-cat">${p.sub} • ${p.fabric}</span>
+    <h1 style="margin:8px 0 4px;font-size:clamp(1.7rem,3.5vw,2.4rem)">${p.name}</h1>
+    <span class="p-code">${p.id} &nbsp; ${p.badge?`<span class="p-badge ${p.badge==='Sale'?'sale':''}" style="position:static">${p.badge}</span>`:''}</span>
+    <div class="p-rating" style="margin:10px 0;font-size:.95rem">${stars(p.rating)} <span style="color:var(--muted)">${p.rating} • ${p.rc} reviews</span></div>
+    <div class="p-price" style="margin:6px 0 2px">
+      <span class="now" style="font-size:1.7rem">${rs(p.sale??p.price)}</span>
+      ${p.sale?`<span class="was" style="font-size:1.05rem">${rs(p.price)}</span><span class="off">Save ${rs(p.price-p.sale)}</span>`:''}
+    </div>
+    <p style="font-size:.78rem;color:var(--muted)">Inclusive of all taxes</p>
+
+    <div class="opt-label">Colour — <b id="colorName">${sel.color}</b></div>
+    <div style="display:flex;gap:12px">${p.colors.map(c=>`<button class="color-dot ${c.n===sel.color?'on':''}" style="background:${c.c}" title="${c.n}" onclick="pickColor('${c.n}',this)"></button>`).join('')}</div>
+
+    <div class="opt-label">Size — <b id="sizeName">${sel.size}</b> <a href="info.html#size-guide" style="color:var(--gold);font-weight:600;text-transform:none;letter-spacing:0">Size Guide</a></div>
+    <div class="size-row" id="sizeRow">
+      ${p.sizes.map(s=>`<button class="size-box ${s.s===sel.size?'on':''} ${s.q===0?'off':''}" onclick="pickSize('${s.s}',this)">${s.s}</button>`).join('')}
+    </div>
+    <p id="stockMsg" style="margin-top:10px">${stockMsg(defSize)}</p>
+
+    <div style="display:flex;gap:14px;align-items:center;margin:24px 0;flex-wrap:wrap">
+      <div class="qty" style="margin:0"><button onclick="bumpQty(-1)">−</button><span id="qtyVal">1</span><button onclick="bumpQty(1)">+</button></div>
+      <button class="btn btn-primary" style="flex:1;min-width:200px" onclick="addToBag()">Add to Bag — <span id="btnTotal">${rs(p.sale??p.price)}</span></button>
+    </div>
+    <button class="btn btn-gold btn-block" onclick="buyNow()">Buy Now — Checkout with COD / Wallet</button>
+
+    <details class="acc" open><summary>Description & Fabric</summary><div class="acc-body">${p.desc}<br><br><b>Fabric:</b> ${p.fabric}<br><b>Care:</b> Gentle machine wash or dry clean. Do not bleach. Warm iron.</div></details>
+    <details class="acc"><summary>Size Chart</summary><div class="acc-body"><table class="size-chart">${SIZES_CHART.map((r,i)=>`<tr>${r.map(c=>i===0?`<th>${c}</th>`:`<td>${c}</td>`).join('')}</tr>`).join('')}</table></div></details>
+    <details class="acc"><summary>Shipping & Returns</summary><div class="acc-body">Dispatched in 24–48 hours via TCS. 2–4 working days nationwide. FREE delivery above Rs 5,000. 7-day easy exchange on unused items with tags — <a href="info.html#returns" style="color:var(--gold);font-weight:700">read policy</a>.</div></details>
+  </div>
+</div>
+
+<section class="section">
+  <div class="sec-head"><div><div class="eyebrow">Complete the Look</div><h2 class="sec-title">You May Also Like</h2></div></div>
+  <div class="grid-products" style="margin-top:26px">${rel.map(cardHTML).join('')}</div>
+</section>`;
+
+function stockMsg(s){const q=inStock(s);return q===0?'<span style="color:var(--red);font-weight:700">Out of stock</span>':q<=2?`<span class="stock-low">Low stock — only ${q} left</span>`:'<span class="stock-ok">✓ In stock, ready to ship</span>'}
+function swapImg(el,src){$('#pdImg').src=src;$$('.pd-thumbs img').forEach(t=>t.classList.remove('on'));el.classList.add('on')}
+function pickColor(n,el){sel.color=n;$('#colorName').textContent=n;$$('.color-dot').forEach(d=>d.classList.remove('on'));el.classList.add('on')}
+function pickSize(s,el){sel.size=s;$('#sizeName').textContent=s;$$('.size-box').forEach(b=>b.classList.remove('on'));el.classList.add('on');$('#stockMsg').innerHTML=stockMsg(s);sel.qty=Math.min(sel.qty,inStock(s)||1);$('#qtyVal').textContent=sel.qty;updTotal()}
+function bumpQty(d){const max=inStock(sel.size)||1;sel.qty=Math.max(1,Math.min(max,sel.qty+d));$('#qtyVal').textContent=sel.qty;updTotal()}
+function updTotal(){const u=p.sale??p.price;$('#btnTotal').textContent=rs(u*sel.qty)}
+function addToBag(){if(Cart.add(p.id,sel.size,sel.color,sel.qty)){toast('Added to bag ✓',true);openCartDrawer()}}
+function buyNow(){if(Cart.add(p.id,sel.size,sel.color,sel.qty))location.href='checkout.html'}
+initReveal();
+})();
+</script>
+</body>
+</html>

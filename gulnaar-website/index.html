@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#420D16">
+<title>Khan — Premium Pakistani Clothing | Kurta, Lawn & Formal Wear</title>
+<meta name="description" content="Shop premium Pakistani clothing online. Kurta shalwar, embroidered lawn, velvet formals. Cash on Delivery nationwide via TCS.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="assets/products.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>renderChrome('index.html')</script>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container hero-inner">
+    <div>
+      <div class="eyebrow">Winter Collection 2026 — Now Live</div>
+      <h1>Wear the <em>Heritage</em>,<br>Own the Room.</h1>
+      <p>Hand-finished kurta shalwar, embroidered lawn, and regal formals — stitched in Faisalabad, delivered to all of Pakistan via TCS. Pay by Cash on Delivery, JazzCash, or Easypaisa.</p>
+      <div class="hero-cta">
+        <a class="btn btn-gold" href="shop.html">Shop New Arrivals</a>
+        <a class="btn btn-outline" style="border-color:#fff;color:#fff" href="shop.html?sale=1">View Sale</a>
+      </div>
+      <div class="hero-trust">
+        <div><strong>25k+</strong>Orders Delivered</div>
+        <div><strong>4.8★</strong>Average Rating</div>
+        <div><strong>7-Day</strong>Easy Exchange</div>
+      </div>
+    </div>
+    <a class="hero-card" href="product.html?id=GLN-WMN-00207">
+      <img src="assets/img/formal-olive.jpg" alt="Olive Farshi Shalwar Kameez">
+      <span class="hero-tag">The Wedding Edit — from Rs 12,800</span>
+    </a>
+  </div>
+</section>
+
+<!-- CATEGORIES -->
+<section class="section" id="categories">
+  <div class="container">
+    <div class="center reveal">
+      <div class="eyebrow">Curated for You</div>
+      <h2 class="sec-title">Shop by Collection</h2>
+      <p class="sec-sub">From daily wear to shaadi season — every piece is quality-checked before it leaves our workshop.</p>
+    </div>
+    <div class="cat-grid">
+      <a class="cat-tile reveal" href="shop.html?cat=men">
+        <img src="assets/img/kurta-black.jpg" alt="Men's collection" loading="lazy">
+        <div class="cat-label"><span>Wash & Wear • Cotton</span><h3>Men's Kurtas</h3></div>
+      </a>
+      <a class="cat-tile reveal" href="shop.html?cat=women">
+        <img src="assets/img/lawn-teal.jpg" alt="Women's lawn" loading="lazy">
+        <div class="cat-label"><span>3-Piece • Dupatta Included</span><h3>Women's Lawn</h3></div>
+      </a>
+      <a class="cat-tile reveal" href="shop.html?sale=1">
+        <img src="assets/img/formal-maroon.jpg" alt="Sale" loading="lazy">
+        <div class="cat-label"><span>Up to 30% Off</span><h3>The Sale Room</h3></div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- NEW ARRIVALS -->
+<section class="section" style="background:var(--cream)">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div>
+        <div class="eyebrow">Just Dropped</div>
+        <h2 class="sec-title">New Arrivals</h2>
+      </div>
+      <div style="display:flex;gap:14px;align-items:center">
+        <div class="carousel-nav"><button onclick="scrollCar('carNew',-1)">←</button><button onclick="scrollCar('carNew',1)">→</button></div>
+        <a class="btn btn-ghost btn-sm" href="shop.html?new=1">View All</a>
+      </div>
+    </div>
+    <div class="carousel" id="carNew"></div>
+  </div>
+</section>
+
+<!-- USP -->
+<section class="section usp">
+  <div class="container usp-grid">
+    <div class="usp-item reveal"><span class="ic">🚚</span><div><h4>Nationwide TCS Delivery</h4><p>2–4 working days. Track every parcel with your Order ID + CN number.</p></div></div>
+    <div class="usp-item reveal"><span class="ic">💵</span><div><h4>Cash on Delivery</h4><p>Pay the rider when your parcel arrives. No card needed, no risk.</p></div></div>
+    <div class="usp-item reveal"><span class="ic">📱</span><div><h4>JazzCash & Easypaisa</h4><p>Pay instantly from your mobile wallet. Verified by our team within hours.</p></div></div>
+    <div class="usp-item reveal"><span class="ic">↩️</span><div><h4>7-Day Exchange</h4><p>Wrong size? Exchange easily. Unused items, tags attached.</p></div></div>
+  </div>
+  <div class="container">
+    <div class="sale-banner reveal">
+      <div class="txt">
+        <div class="eyebrow" style="color:var(--maroon-deep)">Limited Time</div>
+        <div class="big">Winter Sale</div>
+        <h3>Up to 30% off selected formals</h3>
+        <p style="margin:10px 0 20px;color:#5a4710">Velvet, karandi & raw silk — wedding season sorted for less.</p>
+        <a class="btn" style="background:var(--maroon-deep);color:#fff" href="shop.html?sale=1">Shop the Sale →</a>
+      </div>
+      <img src="assets/img/velvet-emerald.jpg" alt="Winter sale" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<!-- BEST SELLERS -->
+<section class="section">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div>
+        <div class="eyebrow">Customer Favourites</div>
+        <h2 class="sec-title">Best Sellers</h2>
+      </div>
+      <div class="carousel-nav"><button onclick="scrollCar('carBest',-1)">←</button><button onclick="scrollCar('carBest',1)">→</button></div>
+    </div>
+    <div class="carousel" id="carBest"></div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="section" style="background:var(--cream)">
+  <div class="container">
+    <div class="center reveal">
+      <div class="eyebrow">Word on the Street</div>
+      <h2 class="sec-title">Loved Across Pakistan</h2>
+    </div>
+    <div class="rev-grid">
+      <div class="rev-card reveal"><div class="stars">★★★★★</div><p>"Ordered the black kurta on Monday, wore it to a dinner Friday. Fabric quality is honestly better than brands charging double."</p><div class="who">Ahmed R. <span>Lahore — Verified Buyer</span></div></div>
+      <div class="rev-card reveal"><div class="stars">★★★★★</div><p>"The teal 3-piece is even prettier in person. COD made it easy to trust my first order. Exchange for a size was seamless."</p><div class="who">Fatima S. <span>Karachi — Verified Buyer</span></div></div>
+      <div class="rev-card reveal"><div class="stars">★★★★☆</div><p>"TCS tracking with the CN number was spot on. Velvet formal fits perfectly — got so many compliments at my cousin's shaadi."</p><div class="who">Mahnoor A. <span>Islamabad — Verified Buyer</span></div></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(async function(){
+  const catalog = await loadProductCatalog();
+  if (!catalog.length) {
+    $('#carNew').innerHTML = '<div class="panel" style="grid-column:1/-1;text-align:center;color:var(--muted);padding:26px">Inventory sync is underway. Please connect the backend API to populate catalog data.</div>';
+    $('#carBest').innerHTML = '';
+    return;
+  }
+  $('#carNew').innerHTML = catalog.filter(p=>p.isNew).map(cardHTML).join('');
+  $('#carBest').innerHTML = [...catalog].sort((a,b)=>b.rc*b.rating-a.rc*a.rating).slice(0,6).map(cardHTML).join('');
+  initReveal();
+})();
+function scrollCar(id,dir){const el=document.getElementById(id);el.scrollBy({left:dir*el.clientWidth*.8,behavior:'smooth'})}
+</script>
+</body>
+</html>
