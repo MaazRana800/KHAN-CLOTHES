@@ -72,13 +72,37 @@
     <!-- PRODUCTS -->
     <section id="tab-products" style="display:none">
       <div class="sec-head" style="margin-bottom:20px"><h2>Products & Stock</h2>
-        <button class="btn btn-primary btn-sm" onclick="toast('Product editor is a demo — full CRUD ships with the PostgreSQL backend (FR-ADM-2/3/4)')">+ Add Product</button></div>
+        <button class="btn btn-primary btn-sm" onclick="openProductEditor()">+ Add Product</button></div>
       <div class="table-wrap"><table class="adm" id="prodTable"></table></div>
     </section>
   </main>
 </div>
 </div>
 
+<dialog id="productEditor" class="product-editor">
+  <form id="productForm" onsubmit="saveProduct(event)">
+    <div class="sec-head"><div><div class="eyebrow">Catalog management</div><h2 id="productEditorTitle">Add product</h2></div>
+      <button class="icon-btn" type="button" aria-label="Close editor" onclick="closeProductEditor()">×</button></div>
+    <div class="product-form-grid">
+      <div><label class="fl" for="pId">Product code</label><input id="pId" required maxlength="40" placeholder="KHAN-MEN-001"></div>
+      <div><label class="fl" for="pName">Product name</label><input id="pName" required maxlength="120"></div>
+      <div><label class="fl" for="pCategory">Category</label><select id="pCategory"><option value="men">Men</option><option value="women">Women</option></select></div>
+      <div><label class="fl" for="pSub">Product type</label><input id="pSub" required maxlength="80" placeholder="Kurta Shalwar"></div>
+      <div><label class="fl" for="pPrice">Price (Rs)</label><input id="pPrice" type="number" min="1" step="1" required></div>
+      <div><label class="fl" for="pSale">Sale price (optional)</label><input id="pSale" type="number" min="1" step="1"></div>
+      <div class="full"><label class="fl" for="pImage">Image path or HTTPS URL</label><input id="pImage" required maxlength="500" placeholder="assets/img/product.jpg"></div>
+      <div><label class="fl" for="pFabric">Fabric</label><input id="pFabric" required maxlength="120"></div>
+      <div><label class="fl" for="pBadge">Badge (optional)</label><input id="pBadge" maxlength="30" placeholder="New, Sale, Premium"></div>
+      <div class="full"><label class="fl" for="pColors">Colors and hex codes</label><input id="pColors" required placeholder="Black:#1c1c1c, Teal:#1f6f78"><small>Enter each color as Name:#hex, separated by commas.</small></div>
+      <div class="full"><label class="fl" for="pSizes">Sizes and stock</label><input id="pSizes" required placeholder="S:4, M:6, L:2"><small>Enter each size as Size:quantity, separated by commas.</small></div>
+      <div class="full"><label class="fl" for="pDescription">Description</label><textarea id="pDescription" rows="4" required maxlength="3000"></textarea></div>
+      <label class="product-new-toggle"><input id="pIsNew" type="checkbox"> Mark as a new arrival</label>
+    </div>
+    <div class="product-editor-actions"><button class="btn btn-ghost" type="button" onclick="closeProductEditor()">Cancel</button><button class="btn btn-primary" id="productSaveButton" type="submit">Save product</button></div>
+  </form>
+</dialog>
+
+<script>
 async function doLogin(){
   const username=$('#aUser').value.trim();
   const password=$('#aPass').value.trim();
@@ -104,11 +128,13 @@ function showTab(t,el){$$('.admin-main section').forEach(s=>s.style.display='non
 
 async function renderAll(){
   try {
-    const [orders, payments] = await Promise.all([
+    const [orders, payments, products] = await Promise.all([
       window.KhanAPI ? window.KhanAPI.adminOrders() : Promise.resolve([]),
       window.KhanAPI ? window.KhanAPI.adminPayments() : Promise.resolve([]),
+      window.KhanAPI ? window.KhanAPI.products() : Promise.resolve(PRODUCTS),
     ]);
     Orders.save(Array.isArray(orders) ? orders : []);
+    if (Array.isArray(products)) { PRODUCTS = products; window.PRODUCTS = products; }
     renderDash();
     renderOrders('');
     renderPayments(Array.isArray(payments) ? payments : []);
@@ -130,6 +156,7 @@ async function renderAll(){
   }
 }
 function esc(s){return String(s??'').replace(/</g,'&lt;')}
+function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 function renderDash(){
   const all=Orders.all();
@@ -229,13 +256,74 @@ async function verdict(code,ok){
   }
 }
 function renderProducts(){
-  $('#prodTable').innerHTML=`<tr><th>Product</th><th>Code</th><th>Price</th><th>Stock by Size</th><th>Status</th></tr>`+
+  $('#prodTable').innerHTML=`<tr><th>Product</th><th>Code</th><th>Price</th><th>Stock by Size</th><th>Status</th><th>Actions</th></tr>`+
    PRODUCTS.map(p=>{const tot=p.sizes.reduce((a,s)=>a+s.q,0);const low=p.sizes.filter(s=>s.q>0&&s.q<=2).length;
-    return `<tr><td style="display:flex;gap:10px;align-items:center"><img src="${p.img}" style="width:44px;height:56px;object-fit:cover;object-position:top;border-radius:8px"><b>${p.name}</b></td>
-    <td><small>${p.id}</small></td><td><b>${rs(p.sale??p.price)}</b>${p.sale?`<br><small style="text-decoration:line-through;color:var(--muted)">${rs(p.price)}</small>`:''}</td>
+    const id=escapeHTML(p.id);
+    return `<tr><td style="display:flex;gap:10px;align-items:center"><img src="${escapeHTML(p.img)}" alt="" style="width:44px;height:56px;object-fit:cover;object-position:top;border-radius:8px"><b>${escapeHTML(p.name)}</b></td>
+    <td><small>${id}</small></td><td><b>${rs(p.sale??p.price)}</b>${p.sale?`<br><small style="text-decoration:line-through;color:var(--muted)">${rs(p.price)}</small>`:''}</td>
     <td>${p.sizes.map(s=>`<span class="pill ${s.q===0?'cancelled':s.q<=2?'awaiting':'delivered'}" style="margin:2px">${s.s}: ${s.q}</span>`).join('')}</td>
-    <td>${tot===0?'<span class="pill cancelled">OUT OF STOCK</span>':low?`<span class="pill awaiting">LOW STOCK (${tot})</span>`:`<span class="pill delivered">ACTIVE (${tot})</span>`}</td></tr>`}).join('');
+    <td>${tot===0?'<span class="pill cancelled">OUT OF STOCK</span>':low?`<span class="pill awaiting">LOW STOCK (${tot})</span>`:`<span class="pill delivered">ACTIVE (${tot})</span>`}</td>
+    <td><button class="btn btn-ghost btn-sm" data-product-action="edit" data-product-id="${id}">Edit</button> <button class="btn btn-sm product-archive" data-product-action="archive" data-product-id="${id}">Archive</button></td></tr>`}).join('');
 }
+
+let editingProductId='';
+function openProductEditor(id=''){
+  const product=PRODUCTS.find(item=>item.id===id);
+  editingProductId=product?.id||'';
+  $('#productForm').reset();
+  $('#productEditorTitle').textContent=editingProductId?'Edit product':'Add product';
+  $('#pId').readOnly=Boolean(editingProductId);
+  if(product){
+    $('#pId').value=product.id; $('#pName').value=product.name; $('#pCategory').value=product.cat;
+    $('#pSub').value=product.sub; $('#pPrice').value=product.price; $('#pSale').value=product.sale??'';
+    $('#pImage').value=product.img; $('#pFabric').value=product.fabric; $('#pBadge').value=product.badge||'';
+    $('#pColors').value=product.colors.map(color=>`${color.n}:${color.c}`).join(', ');
+    $('#pSizes').value=product.sizes.map(size=>`${size.s}:${size.q}`).join(', ');
+    $('#pDescription').value=product.desc; $('#pIsNew').checked=Boolean(product.isNew);
+  }
+  $('#productEditor').showModal();
+}
+function closeProductEditor(){$('#productEditor').close()}
+function parsePairs(value,label){
+  return value.split(',').map(part=>part.trim()).filter(Boolean).map(part=>{
+    const splitAt=part.lastIndexOf(':');
+    if(splitAt<1)throw new Error(`Use Name:value format for ${label}.`);
+    return [part.slice(0,splitAt).trim(),part.slice(splitAt+1).trim()];
+  });
+}
+async function saveProduct(event){
+  event.preventDefault();
+  const button=$('#productSaveButton');
+  try{
+    const colors=parsePairs($('#pColors').value,'colors').map(([n,c])=>({n,c}));
+    const sizes=parsePairs($('#pSizes').value,'sizes').map(([s,q])=>({s,q:Number(q)}));
+    const payload={id:$('#pId').value,name:$('#pName').value,cat:$('#pCategory').value,sub:$('#pSub').value,
+      price:Number($('#pPrice').value),sale:$('#pSale').value===''?null:Number($('#pSale').value),img:$('#pImage').value,
+      fabric:$('#pFabric').value,badge:$('#pBadge').value,colors,sizes,desc:$('#pDescription').value,isNew:$('#pIsNew').checked};
+    button.disabled=true;
+    if(editingProductId)await window.KhanAPI.updateProduct(editingProductId,payload);
+    else await window.KhanAPI.createProduct(payload);
+    closeProductEditor();
+    await refreshProducts();
+    toast(editingProductId?'Product updated':'Product added',true);
+  }catch(error){toast(error.message||'Could not save product')}
+  finally{button.disabled=false}
+}
+async function refreshProducts(){
+  PRODUCTS=await window.KhanAPI.products();
+  window.PRODUCTS=PRODUCTS;
+  renderProducts();
+}
+$('#prodTable').addEventListener('click',async event=>{
+  const button=event.target.closest('[data-product-action]');
+  if(!button)return;
+  const id=button.dataset.productId;
+  if(button.dataset.productAction==='edit'){openProductEditor(id);return}
+  if(button.dataset.productAction==='archive'&&confirm(`Archive ${id}? It will no longer appear in the shop.`)){
+    try{await window.KhanAPI.archiveProduct(id);await refreshProducts();toast('Product archived',true)}
+    catch(error){toast(error.message||'Could not archive product')}
+  }
+});
 </script>
 </body>
 </html>

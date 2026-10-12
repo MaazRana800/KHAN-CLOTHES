@@ -67,6 +67,7 @@ The seeded catalog carries the current sample stock quantities. Review every pri
 - `GET /api/admin/orders` and `GET /api/admin/payments`
 - `PATCH /api/admin/orders/:code/status`
 - `PATCH /api/admin/payments/:code/verify`
+- `POST /api/admin/products`, `PUT /api/admin/products/:id`, and `DELETE /api/admin/products/:id`
 
 Admin routes require `Authorization: Bearer <token>`. The login endpoint issues an eight-hour token. Status transitions are checked on the server; shipping requires a courier tracking number.
 
@@ -78,6 +79,6 @@ Admin routes require `Authorization: Bearer <token>`. The login endpoint issues 
 - Keep `.env` and database credentials out of source control. Restrict database network access and use a least-privilege database account.
 - The manual wallet/bank verification flow is not a payment-provider integration. Staff must confirm incoming funds in the provider/bank before approving.
 - SMS delivery and receipt-image uploads are not implemented yet. Do not show a receipt as uploaded or an SMS as sent until those services are connected.
-- Product CRUD, payment-provider webhooks, password reset/MFA, and operational audit logging should be implemented before a larger production launch.
+- Admins can create, edit, and soft-archive products. Payment-provider webhooks, password reset/MFA, and operational audit logging remain future production work.
 
 Run backend domain tests with `npm test`.

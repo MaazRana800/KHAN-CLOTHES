@@ -63,6 +63,15 @@
     async adminPayments() {
       return request('/admin/payments');
     },
+    async createProduct(payload) {
+      return request('/admin/products', { method: 'POST', body: JSON.stringify(payload) });
+    },
+    async updateProduct(id, payload) {
+      return request(`/admin/products/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) });
+    },
+    async archiveProduct(id) {
+      return request(`/admin/products/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
     async updateOrderStatus(code, status, note) {
       return request(`/admin/orders/${encodeURIComponent(code)}/status`, {
         method: 'PATCH',

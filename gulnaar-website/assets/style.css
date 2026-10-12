@@ -304,7 +304,18 @@ table.adm td{padding:12px 14px;border-top:1px solid #f0e8d8;vertical-align:middl
 .pill.paid{background:#d6f0e2;color:var(--green)}.pill.awaiting{background:#fdeacc;color:#92610a}
 .pill.rejected{background:#fadcda;color:var(--red)}.pill.pending{background:#ece7df;color:#6d6255}
 .admin-login{max-width:400px;margin:10vh auto;background:#fff;border-radius:18px;padding:36px;box-shadow:var(--shadow)}
+.product-editor{width:min(760px,calc(100% - 28px));max-height:calc(100dvh - 28px);padding:26px;border:0;border-radius:12px;background:var(--ivory);color:var(--ink);box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.product-editor::backdrop{background:rgba(36,30,32,.58)}
+.product-editor .sec-head{align-items:flex-start;margin-bottom:20px}
+.product-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.product-form-grid .full{grid-column:1/-1}
+.product-form-grid small{display:block;margin-top:4px;color:var(--muted);font-size:.75rem}
+.product-new-toggle{display:flex;align-items:center;gap:8px;font-size:.88rem}
+.product-new-toggle input{width:18px;height:18px}
+.product-editor-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.product-archive{border:1px solid #e5b3b0;color:var(--red)}
 @media(max-width:900px){.admin-shell{grid-template-columns:1fr}.admin-side{position:static;height:auto}.admin-nav{display:flex;overflow-x:auto}.admin-nav a{white-space:nowrap}.stat-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.product-editor{padding:18px}.product-form-grid{grid-template-columns:1fr}.product-form-grid .full{grid-column:auto}.admin-main{padding:18px 12px}}
 .approve{color:var(--green);font-weight:800}.reject{color:var(--red);font-weight:800}
 .cn-input{width:150px;padding:8px 10px;font-size:.82rem}
 

@@ -56,4 +56,63 @@ function nextOrderStatus(current, next) {
   return ORDER_STATUSES.has(next) && allowed[current]?.includes(next);
 }
 
-module.exports = { normalizePhone, validateOrderPayload, nextOrderStatus };
+function normalizeAdminProduct(payload) {
+  const errors = [];
+  const id = String(payload?.id || '').trim().toUpperCase();
+  const name = String(payload?.name || '').trim();
+  const category = String(payload?.cat || '').trim().toLowerCase();
+  const sub = String(payload?.sub || '').trim();
+  const price = Number(payload?.price);
+  const sale = payload?.sale === '' || payload?.sale == null ? null : Number(payload.sale);
+  const image = String(payload?.img || '').trim();
+  const fabric = String(payload?.fabric || '').trim();
+  const description = String(payload?.desc || '').trim();
+  const colors = payload?.colors;
+  const sizes = payload?.sizes;
+
+  if (!/^[A-Z0-9][A-Z0-9_-]{2,39}$/.test(id)) errors.push('Product code must be 3–40 letters, numbers, dashes, or underscores.');
+  if (!name || name.length > 120) errors.push('Product name is required and must be under 120 characters.');
+  if (!['men', 'women'].includes(category)) errors.push('Choose men or women as the product category.');
+  if (!sub || sub.length > 80) errors.push('A short product type is required (maximum 80 characters).');
+  if (!Number.isSafeInteger(price) || price < 1 || price > 10000000) errors.push('Price must be a whole number greater than zero.');
+  if (sale !== null && (!Number.isSafeInteger(sale) || sale < 1 || sale >= price)) errors.push('Sale price must be less than the regular price.');
+  const safeImagePath = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(image) && !image.split('/').includes('..');
+  if (!image || image.length > 500 || (!safeImagePath && !/^https:\/\//i.test(image))) errors.push('Provide a valid relative image path or HTTPS image URL.');
+  if (!fabric || fabric.length > 120) errors.push('Fabric is required and must be under 120 characters.');
+  if (!description || description.length > 3000) errors.push('Description is required and must be under 3000 characters.');
+  if (!Array.isArray(colors) || colors.length < 1 || colors.length > 12) errors.push('Provide between 1 and 12 colors.');
+  if (Array.isArray(colors) && colors.some((color) => !String(color?.n || '').trim() || String(color.n).length > 40 || !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(color?.c || '')))) {
+    errors.push('Each color needs a name and a valid hex color.');
+  }
+  if (!Array.isArray(sizes) || sizes.length < 1 || sizes.length > 12) errors.push('Provide between 1 and 12 size/stock entries.');
+  if (Array.isArray(sizes) && sizes.some((size) => !String(size?.s || '').trim() || String(size.s).length > 20 || !Number.isInteger(Number(size.q)) || Number(size.q) < 0 || Number(size.q) > 10000)) {
+    errors.push('Each size needs a label and stock quantity from 0 to 10000.');
+  }
+  if (Array.isArray(sizes) && new Set(sizes.map((size) => String(size?.s || '').trim().toLowerCase())).size !== sizes.length) {
+    errors.push('Size labels must be unique.');
+  }
+
+  if (errors.length) return { product: null, errors };
+  return {
+    product: {
+      id,
+      name,
+      cat: category,
+      sub,
+      price,
+      sale,
+      img: image,
+      badge: String(payload.badge || '').trim().slice(0, 30) || null,
+      fabric,
+      colors: colors.map((color) => ({ n: String(color.n).trim(), c: String(color.c).toLowerCase() })),
+      sizes: sizes.map((size) => ({ s: String(size.s).trim(), q: Number(size.q) })),
+      rating: Number.isFinite(Number(payload.rating)) ? Math.min(5, Math.max(0, Number(payload.rating))) : 5,
+      rc: Number.isInteger(Number(payload.rc)) ? Math.max(0, Number(payload.rc)) : 0,
+      desc: description,
+      isNew: Boolean(payload.isNew),
+    },
+    errors: [],
+  };
+}
+
+module.exports = { normalizePhone, validateOrderPayload, nextOrderStatus, normalizeAdminProduct };

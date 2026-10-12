@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizePhone, validateOrderPayload, nextOrderStatus } = require('./domain');
+const { normalizePhone, validateOrderPayload, nextOrderStatus, normalizeAdminProduct } = require('./domain');
 
 test('normalizes common Pakistani phone formatting', () => {
   assert.equal(normalizePhone('0300-123 4567'), '03001234567');
@@ -31,4 +31,25 @@ test('allows only forward order transitions and cancellation before shipment', (
   assert.equal(nextOrderStatus('Packed', 'Shipped'), true);
   assert.equal(nextOrderStatus('Placed', 'Delivered'), false);
   assert.equal(nextOrderStatus('Shipped', 'Cancelled'), false);
+});
+
+test('normalizes a valid admin product payload', () => {
+  const result = normalizeAdminProduct({
+    id: 'new-kurta-1', name: 'New Kurta', cat: 'men', sub: 'Kurta', price: '5000', sale: '4500',
+    img: 'assets/img/new-kurta.jpg', fabric: 'Cotton', desc: 'A quality kurta.', badge: 'New', isNew: true,
+    colors: [{ n: 'Navy', c: '#123456' }], sizes: [{ s: 'M', q: '5' }],
+  });
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.product.id, 'NEW-KURTA-1');
+  assert.equal(result.product.price, 5000);
+  assert.equal(result.product.sizes[0].q, 5);
+});
+
+test('rejects unsafe or malformed admin product data', () => {
+  const result = normalizeAdminProduct({
+    id: 'x', name: '', cat: 'other', sub: '', price: -1, sale: 100,
+    img: 'javascript:alert(1)', fabric: '', desc: '', colors: [], sizes: [],
+  });
+  assert.equal(result.product, null);
+  assert.ok(result.errors.length >= 8);
 });

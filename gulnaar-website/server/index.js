@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('node:path');
 const pool = require('./db');
-const { normalizePhone, validateOrderPayload, nextOrderStatus } = require('./domain');
+const { normalizePhone, validateOrderPayload, nextOrderStatus, normalizeAdminProduct } = require('./domain');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -35,6 +35,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'https:'],
@@ -122,6 +123,45 @@ app.get('/api/products/:id', async (req, res, next) => {
     const { rows } = await pool.query('SELECT data FROM products WHERE id = $1 AND active = TRUE', [req.params.id]);
     if (!rows[0]) return fail(res, 404, 'Product not found.');
     res.json(rows[0].data);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/admin/products', requireAdmin, async (req, res, next) => {
+  const { product, errors } = normalizeAdminProduct(req.body);
+  if (errors.length) return res.status(400).json({ message: errors[0], errors });
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO products (id, data, active, updated_at) VALUES ($1, $2::jsonb, TRUE, NOW()) RETURNING data',
+      [product.id, JSON.stringify(product)],
+    );
+    res.status(201).json(rows[0].data);
+  } catch (error) {
+    if (error.code === '23505') return fail(res, 409, 'A product with that code already exists.');
+    next(error);
+  }
+});
+
+app.put('/api/admin/products/:id', requireAdmin, async (req, res, next) => {
+  const { product, errors } = normalizeAdminProduct({ ...req.body, id: req.params.id });
+  if (errors.length) return res.status(400).json({ message: errors[0], errors });
+  try {
+    const { rows } = await pool.query(
+      'UPDATE products SET data = $2::jsonb, active = TRUE, updated_at = NOW() WHERE id = $1 RETURNING data',
+      [req.params.id, JSON.stringify(product)],
+    );
+    if (!rows[0]) return fail(res, 404, 'Product not found.');
+    res.json(rows[0].data);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/admin/products/:id', requireAdmin, async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query(
+      'UPDATE products SET active = FALSE, updated_at = NOW() WHERE id = $1 AND active = TRUE',
+      [req.params.id],
+    );
+    if (!rowCount) return fail(res, 404, 'Active product not found.');
+    res.status(204).end();
   } catch (error) { next(error); }
 });
 
