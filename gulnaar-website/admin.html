@@ -156,7 +156,7 @@ async function renderAll(){
   }
 }
 function esc(s){return String(s??'').replace(/</g,'&lt;')}
-function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function adminEscapeHTML(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 function renderDash(){
   const all=Orders.all();
@@ -258,8 +258,8 @@ async function verdict(code,ok){
 function renderProducts(){
   $('#prodTable').innerHTML=`<tr><th>Product</th><th>Code</th><th>Price</th><th>Stock by Size</th><th>Status</th><th>Actions</th></tr>`+
    PRODUCTS.map(p=>{const tot=p.sizes.reduce((a,s)=>a+s.q,0);const low=p.sizes.filter(s=>s.q>0&&s.q<=2).length;
-    const id=escapeHTML(p.id);
-    return `<tr><td style="display:flex;gap:10px;align-items:center"><img src="${escapeHTML(p.img)}" alt="" style="width:44px;height:56px;object-fit:cover;object-position:top;border-radius:8px"><b>${escapeHTML(p.name)}</b></td>
+    const id=adminEscapeHTML(p.id);
+    return `<tr><td style="display:flex;gap:10px;align-items:center"><img src="${adminEscapeHTML(p.img)}" alt="" style="width:44px;height:56px;object-fit:cover;object-position:top;border-radius:8px"><b>${adminEscapeHTML(p.name)}</b></td>
     <td><small>${id}</small></td><td><b>${rs(p.sale??p.price)}</b>${p.sale?`<br><small style="text-decoration:line-through;color:var(--muted)">${rs(p.price)}</small>`:''}</td>
     <td>${p.sizes.map(s=>`<span class="pill ${s.q===0?'cancelled':s.q<=2?'awaiting':'delivered'}" style="margin:2px">${s.s}: ${s.q}</span>`).join('')}</td>
     <td>${tot===0?'<span class="pill cancelled">OUT OF STOCK</span>':low?`<span class="pill awaiting">LOW STOCK (${tot})</span>`:`<span class="pill delivered">ACTIVE (${tot})</span>`}</td>

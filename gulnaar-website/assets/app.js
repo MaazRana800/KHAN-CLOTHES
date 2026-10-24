@@ -130,7 +130,6 @@ function renderChrome(active){
       <nav class="nav-links" id="navLinks" aria-label="Main navigation">
         <button class="nav-close" id="navClose" type="button" aria-label="Close menu">×</button>
         ${NAV.map(n=>`<a href="${n[0]}" class="${active===n[0].split('#')[0]?'active':''}">${n[1]}</a>`).join('')}
-        <a href="admin.html" style="color:var(--gold)">Admin</a>
       </nav>
       <div class="nav-icons">
         <a class="icon-btn" href="shop.html" title="Search" aria-label="Search products">⌕</a>
