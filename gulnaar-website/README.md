@@ -10,7 +10,7 @@ This workspace contains a static storefront and an Express API backed by Postgre
 ## Local setup
 
 1. Create a PostgreSQL database named `khan_store` (or choose another name in `DATABASE_URL`).
-2. Copy `.env.example` to `.env` and set `DATABASE_URL`, a unique `JWT_SECRET` of at least 32 random characters, `CORS_ORIGIN`, and a unique admin password of at least 12 characters.
+2. Copy `.env.example` to `.env` and set `DATABASE_URL`, a unique `JWT_SECRET` and `VISITOR_GATE_SECRET` of at least 32 random characters each, `CORS_ORIGIN`, a unique admin password of at least 12 characters, and your Cloudflare Turnstile site and secret keys.
 3. Install packages with `npm install`.
 4. Run `npm run db:migrate` to create the tables.
 5. Run `npm run db:seed` to import the current catalog. Review product prices and every size's stock quantity before accepting orders; the checked-in catalog is only starter inventory.
@@ -24,10 +24,18 @@ The API health check is `GET /api/health`. The browser client expects `/api/prod
 
 - Keep the static site and `/api` behind HTTPS. Configure the hosting provider or reverse proxy to route `/api/*` to this Node service.
 - Use a managed PostgreSQL service and its private connection string. Enable `DATABASE_SSL=true` when required by the provider.
-- Set `NODE_ENV=production`, a long random `JWT_SECRET`, the exact storefront `CORS_ORIGIN`, and a production `DATABASE_URL` in the hosting secret manager. Never commit `.env` or expose these values in frontend files.
+- Set `NODE_ENV=production`, long random `JWT_SECRET` and `VISITOR_GATE_SECRET` values, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, the exact storefront `CORS_ORIGIN`, and a production `DATABASE_URL` in the hosting secret manager. Never commit `.env` or expose secret values in frontend files.
+- Visitors must complete Cloudflare Turnstile before the storefront, assets, or non-health API routes are served. Configure the Turnstile widget for the deployed host; the server validates tokens with Cloudflare and grants a 12-hour, signed, HttpOnly cookie.
 - Create the admin account as a one-off deployment command. Do not keep `ADMIN_PASSWORD` in the running service environment after creation.
 - Back up the database and review inventory and payment receiver details before launch.
 - The checkout currently supports manual payment references only; it does not charge cards or verify wallet transactions automatically. The receipt file input is not uploaded yet. Do not advertise automated payment or receipt processing until a provider integration and private file storage are added.
+- Credentials were previously present in the example environment file. Rotate any database credentials, JWT/admin passwords, and other secrets that were ever used or committed; removing them from the example does not remove them from Git history.
+
+### Deploying on Vercel
+
+Vercel supports Express applications. To deploy, import the Git repository, set the Vercel project **Root Directory** to `gulnaar-website`, and use the default Express detection. Provision PostgreSQL separately, run the migrations and seed/admin setup against it, then add `NODE_ENV`, `DATABASE_URL`, `DATABASE_SSL`, `JWT_SECRET`, `VISITOR_GATE_SECRET`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`, and `CORS_ORIGIN` under the project's environment variables. Create the Turnstile widget for the Vercel domain, and redeploy after setting the keys.
+
+Vercel's free Hobby plan is for personal/non-commercial use. This storefront is configured as a commercial shop, so do not use Hobby for a live business; check the current plan terms and choose an eligible paid plan if operating it commercially. A frontend-only deployment will not provide the order, inventory, or admin API. Vercel docs: [Express on Vercel](https://vercel.com/docs/frameworks/backend/express), [Hobby plan](https://vercel.com/docs/plans/hobby), [Terms of Service](https://vercel.com/legal/terms).
 
 ## Tests
 

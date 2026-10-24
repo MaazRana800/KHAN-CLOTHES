@@ -8,12 +8,19 @@ const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('node:path');
+const fs = require('node:fs');
+const { createHmac, timingSafeEqual } = require('node:crypto');
 const pool = require('./db');
 const { normalizePhone, validateOrderPayload, nextOrderStatus, normalizeAdminProduct } = require('./domain');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
 const jwtSecret = process.env.JWT_SECRET || '';
+const visitorGateSecret = process.env.VISITOR_GATE_SECRET
+  || (process.env.NODE_ENV === 'production' ? '' : 'local-only-visitor-gate-secret');
+const siteRoot = path.resolve(__dirname, '..');
+const verificationPage = fs.readFileSync(path.join(siteRoot, 'verify.html'), 'utf8')
+  .replaceAll('__TURNSTILE_SITE_KEY__', process.env.TURNSTILE_SITE_KEY || '');
 const cityFees = {
   Lahore: 200, Karachi: 250, Islamabad: 220, Rawalpindi: 220,
   Faisalabad: 180, Multan: 200, Gujranwala: 180, Sialkot: 180,
@@ -28,18 +35,22 @@ const coupons = {
 if (process.env.NODE_ENV === 'production' && jwtSecret.length < 32) {
   throw new Error('JWT_SECRET must be at least 32 characters in production.');
 }
+if (process.env.NODE_ENV === 'production' && visitorGateSecret.length < 32) {
+  throw new Error('VISITOR_GATE_SECRET must be at least 32 characters in production.');
+}
 if (!jwtSecret) console.warn('JWT_SECRET is not configured. Admin login is disabled until it is set.');
 
 app.disable('x-powered-by');
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://challenges.cloudflare.com'],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", 'https://challenges.cloudflare.com'],
+      frameSrc: ["'self'", 'https://challenges.cloudflare.com'],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: null,
     },
@@ -52,6 +63,65 @@ app.use(cors({
 app.use(express.json({ limit: '100kb' }));
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false });
+const verificationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false });
+
+function visitorCookieSignature(expiry) {
+  return createHmac('sha256', visitorGateSecret).update(expiry).digest('base64url');
+}
+
+function hasVerifiedVisitor(req) {
+  if (!visitorGateSecret) return false;
+  const cookies = (req.headers.cookie || '').split(';');
+  const cookie = cookies.map((part) => part.trim()).find((part) => part.startsWith('khan_visitor='));
+  if (!cookie) return false;
+  const [expiry, signature] = cookie.slice('khan_visitor='.length).split('.');
+  if (!expiry || !signature || !/^\d+$/.test(expiry) || Number(expiry) <= Date.now()) return false;
+  const expected = Buffer.from(visitorCookieSignature(expiry));
+  const received = Buffer.from(signature);
+  return expected.length === received.length && timingSafeEqual(expected, received);
+}
+
+app.use((req, res, next) => {
+  if (req.path === '/api/health' || req.path === '/api/verification') return next();
+  if (hasVerifiedVisitor(req)) return next();
+  if (req.path.startsWith('/api/')) return fail(res, 403, 'Complete visitor verification to continue.');
+  res.set('Cache-Control', 'no-store');
+  return res.type('html').send(verificationPage);
+});
+
+app.post('/api/verification', verificationLimiter, async (req, res, next) => {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  const token = req.body?.token;
+  if (!process.env.TURNSTILE_SITE_KEY || !secret) {
+    return fail(res, 503, 'Visitor verification is not configured. Please contact the site owner.');
+  }
+  if (typeof token !== 'string' || token.length === 0 || token.length > 2048) {
+    return fail(res, 400, 'Complete the visitor verification challenge.');
+  }
+
+  try {
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret, response: token }),
+    });
+    if (!response.ok) return fail(res, 503, 'Visitor verification is temporarily unavailable.');
+    const result = await response.json();
+    if (result.success !== true) return fail(res, 403, 'Verification failed. Please try again.');
+
+    const expiry = String(Date.now() + 12 * 60 * 60 * 1000);
+    res.cookie('khan_visitor', `${expiry}.${visitorCookieSignature(expiry)}`, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 12 * 60 * 60 * 1000,
+      path: '/',
+    });
+    return res.json({ verified: true });
+  } catch (error) {
+    return next(error);
+  }
+});
 
 function fail(res, status, message) {
   return res.status(status).json({ message });
@@ -331,7 +401,6 @@ app.patch('/api/admin/payments/:code/verify', requireAdmin, async (req, res, nex
   } finally { client.release(); }
 });
 
-const siteRoot = path.resolve(__dirname, '..');
 app.use('/assets', express.static(path.join(siteRoot, 'assets'), { dotfiles: 'deny', index: false, fallthrough: false }));
 for (const page of ['index.html', 'shop.html', 'product.html', 'checkout.html', 'track.html', 'info.html', 'admin.html']) {
   app.get(page === 'index.html' ? ['/', '/index.html'] : `/${page}`, (req, res) => res.sendFile(path.join(siteRoot, page)));
@@ -344,12 +413,16 @@ app.use((error, req, res, next) => {
   res.status(status).json({ message: status === 404 ? 'Resource not found.' : 'The server could not complete the request.' });
 });
 
-const server = app.listen(port, () => console.log(`Khan API listening on port ${port}`));
-async function shutdown() {
-  server.close(async () => {
-    await pool.end();
-    process.exit(0);
-  });
+if (require.main === module) {
+  const server = app.listen(port, () => console.log(`Khan API listening on port ${port}`));
+  async function shutdown() {
+    server.close(async () => {
+      await pool.end();
+      process.exit(0);
+    });
+  }
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+
+module.exports = app;

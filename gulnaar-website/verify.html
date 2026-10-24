@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#420D16">
+  <title>Verification — Khan Premium Clothing</title>
+  <style>
+    :root{color-scheme:light;--maroon:#420d16;--gold:#c9a227;--ivory:#faf6ef;--muted:#756a6a}
+    *{box-sizing:border-box}
+    body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at top,#f3ecdf,var(--ivory) 65%);color:#241e20;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{width:min(100%,460px);padding:44px 34px;border:1px solid #e8dfcd;border-radius:18px;background:#fff;box-shadow:0 18px 55px rgba(66,13,22,.12);text-align:center}
+    .mark{width:54px;height:54px;margin:0 auto 22px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#e9d28a,var(--gold));color:var(--maroon);font-family:Georgia,serif;font-size:27px;font-weight:700}
+    .eyebrow{margin:0 0 10px;color:#8a6d12;font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+    h1{margin:0;color:var(--maroon);font-family:Georgia,serif;font-size:clamp(1.8rem,7vw,2.25rem);line-height:1.2}
+    .intro{margin:14px 0 26px;color:var(--muted);line-height:1.6}
+    #challenge{display:flex;justify-content:center;min-height:66px}
+    #message{min-height:24px;margin:16px 0 0;color:var(--muted);font-size:.9rem}
+    #message.error{color:#a5211d}
+    @media(max-width:420px){main{padding:36px 20px}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">خ</div>
+    <p class="eyebrow">Khan Premium Clothing</p>
+    <h1>One quick check to continue</h1>
+    <p class="intro">Please complete this security check to continue to the store.</p>
+    <div id="challenge" data-sitekey="__TURNSTILE_SITE_KEY__"></div>
+    <p id="message" role="status" aria-live="polite">Loading verification…</p>
+  </main>
+  <script>
+    'use strict';
+    const challenge = document.querySelector('#challenge');
+    const message = document.querySelector('#message');
+    const siteKey = challenge.dataset.sitekey;
+    const setMessage = (text, isError = false) => {
+      message.textContent = text;
+      message.classList.toggle('error', isError);
+    };
+
+    window.onTurnstileVerified = async (token) => {
+      setMessage('Checking your verification…');
+      try {
+        const response = await fetch('/api/verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Verification failed. Please try again.');
+        location.reload();
+      } catch (error) {
+        setMessage(error.message || 'Verification failed. Please try again.', true);
+        if (window.turnstile) window.turnstile.reset();
+      }
+    };
+    window.onTurnstileError = () => setMessage('The security check could not load. Please refresh and try again.', true);
+
+    if (!siteKey || siteKey.includes('__TURNSTILE_SITE_KEY__')) {
+      setMessage('Visitor verification is not configured. Please contact the site owner.', true);
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        window.turnstile.render(challenge, {
+          sitekey: siteKey,
+          callback: window.onTurnstileVerified,
+          'error-callback': window.onTurnstileError,
+          'expired-callback': () => setMessage('The verification expired. Please complete it again.', true),
+          theme: 'light',
+        });
+      };
+      script.onerror = window.onTurnstileError;
+      document.head.appendChild(script);
+    }
+  </script>
+</body>
+</html>
