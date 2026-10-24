@@ -126,7 +126,7 @@ function renderChrome(active){
   </div>`;
   document.body.appendChild(ftr);
   const wa=document.createElement('a');
-  wa.className='wa-float';wa.href='https://wa.me/923001234567';wa.target='_blank';wa.title='Chat on WhatsApp';
+  wa.className='wa-float';wa.href='https://wa.me/923081961618';wa.target='_blank';wa.title='Chat on WhatsApp';
   wa.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.3c-.2.6-1.3 1.2-1.8 1.3-.5 0-1 .2-3.4-.7-2.9-1.1-4.7-4-4.9-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .6l-.4.6-.5.5c-.2.2-.3.4-.1.7.2.3.9 1.5 2 2.4 1.4 1.2 2.5 1.6 2.9 1.8.3.2.5.1.7-.1l1-1.1c.2-.3.4-.2.7-.1l2 .9c.3.2.5.3.6.4 0 .1 0 .7-.2 1.1z"/></svg>';
   document.body.appendChild(wa);
 
