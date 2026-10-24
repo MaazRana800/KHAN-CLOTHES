@@ -39,6 +39,35 @@
   </div>
 </section>
 
+<section class="offers-section" aria-label="Current offers">
+  <div class="container">
+    <div class="offers-heading">
+      <div>
+        <div class="eyebrow">A Little Extra for You</div>
+        <h2>Make your next order sweeter</h2>
+      </div>
+      <span>Enter a code at checkout</span>
+    </div>
+    <div class="offers-grid">
+      <a class="offer-card" href="shop.html">
+        <span class="offer-icon" aria-hidden="true">%</span>
+        <span class="offer-detail"><strong>10% off</strong><small>Orders of Rs 3,000 or more</small></span>
+        <span class="offer-code">KHAN10</span>
+      </a>
+      <a class="offer-card" href="shop.html">
+        <span class="offer-icon" aria-hidden="true">−</span>
+        <span class="offer-detail"><strong>Rs 500 off</strong><small>Orders of Rs 5,000 or more</small></span>
+        <span class="offer-code">EID500</span>
+      </a>
+      <a class="offer-card" href="shop.html">
+        <span class="offer-icon" aria-hidden="true">↗</span>
+        <span class="offer-detail"><strong>Free delivery</strong><small>No minimum order</small></span>
+        <span class="offer-code">FREESHIP</span>
+      </a>
+    </div>
+  </div>
+</section>
+
 <!-- CATEGORIES -->
 <section class="section" id="categories">
   <div class="container">
@@ -94,12 +123,22 @@
       <div class="txt">
         <div class="eyebrow" style="color:var(--maroon-deep)">Limited Time</div>
         <div class="big">Winter Sale</div>
-        <h3>Up to 30% off selected formals</h3>
-        <p style="margin:10px 0 20px;color:#5a4710">Velvet, karandi & raw silk — wedding season sorted for less.</p>
+        <h3>Save up to 18% on selected styles</h3>
+        <p style="margin:10px 0 20px;color:#5a4710">Shop selected kurtas, lawn suits, and formals at special prices.</p>
         <a class="btn" style="background:var(--maroon-deep);color:#fff" href="shop.html?sale=1">Shop the Sale →</a>
       </div>
-      <img src="assets/img/velvet-emerald.jpg" alt="Winter sale" loading="lazy">
+      <img src="assets/img/formal-maroon.jpg" alt="Maroon formal suit on sale" loading="lazy">
     </div>
+  </div>
+</section>
+
+<section class="section recent-section" id="recentSection" hidden>
+  <div class="container">
+    <div class="sec-head">
+      <div><div class="eyebrow">Pick Up Where You Left Off</div><h2 class="sec-title">Recently Viewed</h2></div>
+      <button class="btn btn-ghost btn-sm" id="clearRecent" type="button">Clear history</button>
+    </div>
+    <div class="carousel" id="recentProducts"></div>
   </div>
 </section>
 
@@ -142,6 +181,14 @@
   }
   $('#carNew').innerHTML = catalog.filter(p=>p.isNew).map(cardHTML).join('');
   $('#carBest').innerHTML = [...catalog].sort((a,b)=>b.rc*b.rating-a.rc*a.rating).slice(0,6).map(cardHTML).join('');
+  function renderRecent(){
+    const viewed=RecentViews.all().map(id=>catalog.find(product=>product.id===id)).filter(Boolean);
+    $('#recentProducts').innerHTML=viewed.map(cardHTML).join('');
+    $('#recentSection').hidden=!viewed.length;
+    initReveal();
+  }
+  $('#clearRecent').addEventListener('click',()=>{RecentViews.clear();renderRecent()});
+  renderRecent();
   initReveal();
 })();
 function scrollCar(id,dir){const el=document.getElementById(id);el.scrollBy({left:dir*el.clientWidth*.8,behavior:'smooth'})}

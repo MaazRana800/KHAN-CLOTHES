@@ -20,6 +20,8 @@ This workspace contains a static storefront and an Express API backed by Postgre
 
 The API health check is `GET /api/health`. The browser client expects `/api/products`, `/api/products/:id`, `/api/orders`, `/api/orders/track`, `/api/admin/login`, `/api/admin/orders`, `/api/admin/payments`, and the admin `PATCH` routes.
 
+The storefront includes a wishlist, recently viewed products, search suggestions, and product reviews. Wishlist/history and review entries are currently stored in each shopper's browser only; reviews are not verified or shared between visitors.
+
 ## Production deployment
 
 - Keep the static site and `/api` behind HTTPS. Configure the hosting provider or reverse proxy to route `/api/*` to this Node service.

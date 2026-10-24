@@ -24,7 +24,7 @@
   <div class="container shop-layout">
     <aside class="filters">
       <h4>Search</h4>
-      <div class="search-wrap"><span class="si">⌕</span><input id="fSearch" placeholder="Product or code…" oninput="applyFilters()"></div>
+      <div class="search-wrap"><span class="si">⌕</span><input id="fSearch" list="productSuggestions" placeholder="Product, fabric, colour, or code…" oninput="applyFilters()"><datalist id="productSuggestions"></datalist></div>
       <h4>Category</h4>
       <div class="chip-row" id="fCat">
         <button class="chip on" data-v="all">All</button>
@@ -67,7 +67,8 @@
 
 <script>
 const qs=new URLSearchParams(location.search);
-let state={cat:qs.get('cat')||'all',size:'any',color:'any',max:13000,sale:qs.get('sale')==='1',isNew:qs.get('new')==='1',q:'',sort:'pop'};
+let state={cat:qs.get('cat')||'all',size:'any',color:'any',max:13000,sale:qs.get('sale')==='1',isNew:qs.get('new')==='1',q:qs.get('q')||'',sort:'pop'};
+$('#fSearch').value=state.q;
 $('#fSale').checked=state.sale; $('#fNew').checked=state.isNew;
 if(state.sale)$('#shopTitle').textContent='The Sale Room';
 if(state.isNew)$('#shopTitle').textContent='New Arrivals';
@@ -84,6 +85,7 @@ async function applyFilters(){
   const catalog = await loadProductCatalog();
   state.max=+$('#fPrice').value; state.q=$('#fSearch').value.trim().toLowerCase();
   state.sale=$('#fSale').checked; state.isNew=$('#fNew').checked; state.sort=$('#fSort').value;
+  $('#productSuggestions').innerHTML=catalog.flatMap(p=>[p.name,p.id]).map(value=>`<option value="${escapeHTML(value)}">`).join('');
   $('#priceVal').textContent=rs(state.max);
   let list = (Array.isArray(catalog) ? catalog : []).filter(p=>{
     if(state.cat!=='all'&&p.cat!==state.cat)return false;
@@ -92,7 +94,8 @@ async function applyFilters(){
     if((p.sale??p.price)>state.max)return false;
     if(state.sale&&!p.sale)return false;
     if(state.isNew&&!p.isNew)return false;
-    if(state.q&&!(p.name.toLowerCase().includes(state.q)||p.id.toLowerCase().includes(state.q)))return false;
+    const searchable=[p.name,p.id,p.sub,p.cat,p.fabric,...p.colors.map(color=>color.n)].join(' ').toLowerCase();
+    if(state.q&&!searchable.includes(state.q))return false;
     return true;
   });
   const sorts={pop:(a,b)=>b.rc*b.rating-a.rc*a.rating,new:(a,b)=>(b.isNew-a.isNew)||b.id.localeCompare(a.id),

@@ -402,7 +402,7 @@ app.patch('/api/admin/payments/:code/verify', requireAdmin, async (req, res, nex
 });
 
 app.use('/assets', express.static(path.join(siteRoot, 'assets'), { dotfiles: 'deny', index: false, fallthrough: false }));
-for (const page of ['index.html', 'shop.html', 'product.html', 'checkout.html', 'track.html', 'info.html', 'admin.html']) {
+for (const page of ['index.html', 'shop.html', 'product.html', 'checkout.html', 'track.html', 'info.html', 'admin.html', 'wishlist.html']) {
   app.get(page === 'index.html' ? ['/', '/index.html'] : `/${page}`, (req, res) => res.sendFile(path.join(siteRoot, page)));
 }
 

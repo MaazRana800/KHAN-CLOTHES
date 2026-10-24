@@ -61,6 +61,12 @@
         <h3><span class="step-no">3</span> Order Summary</h3>
         <div id="ckItems"></div>
         <div class="coupon-row"><input id="cCoupon" placeholder="Coupon code — try KHAN10"><button class="btn btn-ghost btn-sm" onclick="applyCoupon()">Apply</button></div>
+        <div class="coupon-offers" aria-label="Available discount codes">
+          <span>Available offers</span>
+          <button type="button" onclick="useCoupon('KHAN10')"><b>KHAN10</b><small>10% off Rs 3,000+</small></button>
+          <button type="button" onclick="useCoupon('EID500')"><b>EID500</b><small>Rs 500 off Rs 5,000+</small></button>
+          <button type="button" onclick="useCoupon('FREESHIP')"><b>FREESHIP</b><small>Free delivery</small></button>
+        </div>
         <div id="couponMsg" style="font-size:.8rem;margin-bottom:6px"></div>
         <div class="summary-row"><span>Subtotal</span><span id="sSub"></span></div>
         <div class="summary-row" id="sDiscRow" style="display:none;color:var(--green)"><span>Discount</span><span id="sDisc"></span></div>
@@ -114,6 +120,10 @@ function applyCoupon(){
   else if(Cart.subtotal()<c.min){$('#couponMsg').innerHTML=`<span style="color:var(--red)">Minimum order ${rs(c.min)} required.</span>`;coupon=null}
   else{coupon=c;$('#couponMsg').innerHTML=`<span style="color:var(--green)">✓ Coupon ${code} applied!</span>`}
   renderSummary();
+}
+function useCoupon(code){
+  $('#cCoupon').value=code;
+  applyCoupon();
 }
 async function placeOrder(){
   const items=Cart.items();

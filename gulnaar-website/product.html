@@ -21,6 +21,7 @@
   const pid=new URLSearchParams(location.search).get('id');
   const p=(catalog.find(x=>x.id===pid)||catalog[0]);
   if(!p){ $('#pdRoot').innerHTML='<div class="panel" style="margin-top:30px;text-align:center;color:var(--muted)">Product not found or backend inventory is not available.</div>'; return; }
+  RecentViews.add(p.id);
   let sel={size:null,color:p.colors[0].n,qty:1};
 
   document.title=p.name+' — Khan';
@@ -59,6 +60,7 @@
       <div class="qty" style="margin:0"><button onclick="bumpQty(-1)">−</button><span id="qtyVal">1</span><button onclick="bumpQty(1)">+</button></div>
       <button class="btn btn-primary" style="flex:1;min-width:200px" onclick="addToBag()">Add to Bag — <span id="btnTotal">${rs(p.sale??p.price)}</span></button>
     </div>
+    <button class="btn btn-ghost btn-block product-wishlist ${Wishlist.has(p.id)?'saved':''}" type="button" data-wishlist-id="${p.id}" aria-label="${Wishlist.has(p.id)?'Remove from wishlist':'Save to wishlist'}" aria-pressed="${Wishlist.has(p.id)}" onclick="toggleWishlist('${p.id}')">${Wishlist.has(p.id)?'♥ Saved to Wishlist':'♡ Save to Wishlist'}</button>
     <button class="btn btn-gold btn-block" onclick="buyNow()">Buy Now — Checkout with COD / Wallet</button>
 
     <details class="acc" open><summary>Description & Fabric</summary><div class="acc-body">${p.desc}<br><br><b>Fabric:</b> ${p.fabric}<br><b>Care:</b> Gentle machine wash or dry clean. Do not bleach. Warm iron.</div></details>
@@ -67,10 +69,45 @@
   </div>
 </div>
 
+<section class="section review-section">
+  <div class="review-heading"><div><div class="eyebrow">Your Experience</div><h2 class="sec-title">Share your thoughts</h2></div><span id="reviewCount"></span></div>
+  <p class="review-notice">Reviews are saved only in this browser and are not verified or visible to other shoppers.</p>
+  <form class="review-form" id="reviewForm">
+    <label>Your rating<select id="reviewRating" required><option value="5">★★★★★ — Loved it</option><option value="4">★★★★☆ — Great</option><option value="3">★★★☆☆ — Good</option><option value="2">★★☆☆☆ — Could be better</option><option value="1">★☆☆☆☆ — Not for me</option></select></label>
+    <label>Your name<input id="reviewName" maxlength="40" required placeholder="Name"></label>
+    <label>Review title<input id="reviewTitle" maxlength="70" required placeholder="Sum it up in a few words"></label>
+    <label>Your review<textarea id="reviewText" maxlength="600" rows="4" required placeholder="What did you think about the fabric, fit, or finish?"></textarea></label>
+    <button class="btn btn-primary" type="submit">Save review on this device</button>
+  </form>
+  <div class="review-list" id="reviewList"></div>
+</section>
+
 <section class="section">
   <div class="sec-head"><div><div class="eyebrow">Complete the Look</div><h2 class="sec-title">You May Also Like</h2></div></div>
   <div class="grid-products" style="margin-top:26px">${rel.map(cardHTML).join('')}</div>
 </section>`;
+
+function renderReviews(){
+  const reviews=ProductReviews.all(p.id);
+  $('#reviewCount').textContent=reviews.length+' local review'+(reviews.length===1?'':'s');
+  $('#reviewList').innerHTML=reviews.length?reviews.map(reviewHTML).join(''):'<p class="review-empty">No reviews saved on this device yet. Be the first to share your experience.</p>';
+}
+$('#reviewForm').addEventListener('submit',event=>{
+  event.preventDefault();
+  const review={
+    rating:Number($('#reviewRating').value),
+    name:$('#reviewName').value.trim(),
+    title:$('#reviewTitle').value.trim(),
+    text:$('#reviewText').value.trim(),
+    createdAt:new Date().toISOString(),
+  };
+  if(review.rating<1||review.rating>5||!review.name||!review.title||!review.text){toast('Please complete each review field');return}
+  ProductReviews.add(p.id,review);
+  $('#reviewForm').reset();
+  renderReviews();
+  toast('Review saved on this device',true);
+});
+renderReviews();
 
 function stockMsg(s){const q=inStock(s);return q===0?'<span style="color:var(--red);font-weight:700">Out of stock</span>':q<=2?`<span class="stock-low">Low stock — only ${q} left</span>`:'<span class="stock-ok">✓ In stock, ready to ship</span>'}
 function swapImg(el,src){$('#pdImg').src=src;$$('.pd-thumbs img').forEach(t=>t.classList.remove('on'));el.classList.add('on')}

@@ -4,6 +4,38 @@
 const $=(s,c=document)=>c.querySelector(s), $$=(s,c=document)=>[...c.querySelectorAll(s)];
 const rs=n=>'Rs '+Number(n).toLocaleString('en-PK');
 const LS={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
+const escapeHTML=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+const Wishlist={
+  key:'gln_wishlist',
+  all(){const value=LS.get(this.key,[]);return Array.isArray(value)?value.filter(id=>typeof id==='string'):[]},
+  has(id){return this.all().includes(id)},
+  toggle(id){
+    const items=this.all();
+    const updated=items.includes(id)?items.filter(item=>item!==id):[...items,id];
+    LS.set(this.key,updated);
+    document.dispatchEvent(new CustomEvent('wishlist:change'));
+    return updated.includes(id);
+  },
+};
+
+const RecentViews={
+  key:'gln_recent_views',
+  all(){const value=LS.get(this.key,[]);return Array.isArray(value)?value.filter(id=>typeof id==='string'):[]},
+  add(id){LS.set(this.key,[id,...this.all().filter(item=>item!==id)].slice(0,6))},
+  clear(){LS.set(this.key,[])},
+};
+
+const ProductReviews={
+  key:'gln_product_reviews',
+  all(id){const value=LS.get(this.key,{});return Array.isArray(value[id])?value[id]:[]},
+  add(id,review){
+    const value=LS.get(this.key,{});
+    const reviews=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+    reviews[id]=[review,...(Array.isArray(reviews[id])?reviews[id]:[])].slice(0,50);
+    LS.set(this.key,reviews);
+  },
+};
 
 async function apiRequest(path, options={}) {
   if (!window.KhanAPI) return null;
@@ -77,7 +109,7 @@ const Orders={
 };
 
 /* ---------- shared chrome ---------- */
-const NAV=[['index.html','Home'],['shop.html','Shop'],['info.html#size-guide','Size Guide'],['track.html','Track Order'],['info.html#contact','Contact']];
+const NAV=[['index.html','Home'],['shop.html','Shop'],['wishlist.html','Wishlist'],['info.html#size-guide','Size Guide'],['track.html','Track Order'],['info.html#contact','Contact']];
 function renderChrome(active){
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => renderChrome(active), { once: true });
@@ -102,6 +134,7 @@ function renderChrome(active){
       </nav>
       <div class="nav-icons">
         <a class="icon-btn" href="shop.html" title="Search" aria-label="Search products">⌕</a>
+        <a class="icon-btn wishlist-nav" href="wishlist.html" title="Wishlist" aria-label="Wishlist">♡<span class="cart-badge" id="wishlistBadge" style="display:none">0</span></a>
         <button class="icon-btn" id="cartButton" type="button" title="Cart" aria-label="Open shopping bag">🛍<span class="cart-badge" id="cartBadge" style="display:none">0</span></button>
         <button class="icon-btn hamburger" id="burger" type="button" title="Menu" aria-label="Open menu" aria-controls="navLinks" aria-expanded="false">☰</button>
       </div>
@@ -151,9 +184,15 @@ function renderChrome(active){
 
   updateBadge();
   document.addEventListener('cart:change',updateBadge);
+  updateWishlistBadge();
+  document.addEventListener('wishlist:change',updateWishlistBadge);
+  updateWishlistButtons();
   initReveal();
 }
 function updateBadge(){const b=$('#cartBadge');if(!b)return;const c=Cart.count();b.textContent=c;b.style.display=c?'grid':'none'}
+function updateWishlistBadge(){const b=$('#wishlistBadge');if(!b)return;const c=Wishlist.all().length;b.textContent=c;b.style.display=c?'grid':'none'}
+function updateWishlistButtons(){$$('[data-wishlist-id]').forEach(button=>{const saved=Wishlist.has(button.dataset.wishlistId);button.classList.toggle('saved',saved);button.setAttribute('aria-pressed',String(saved));button.setAttribute('aria-label',saved?'Remove from wishlist':'Save to wishlist');button.textContent=button.classList.contains('product-wishlist')?(saved?'♥ Saved to Wishlist':'♡ Save to Wishlist'):(saved?'♥':'♡')})}
+function toggleWishlist(id){const saved=Wishlist.toggle(id);toast(saved?'Saved to your wishlist':'Removed from your wishlist',true);updateWishlistButtons();return saved}
 
 /* ---------- cart drawer ---------- */
 function openCartDrawer(){
@@ -210,7 +249,7 @@ function cardHTML(p){
       <img src="${p.img}" alt="${p.name}" loading="lazy">
       ${p.badge?`<span class="p-badge ${p.badge==='Sale'?'sale':''}">${p.badge}</span>`:''}
     </a>
-    <div class="p-quick"><button title="Quick add" onclick="quickAdd('${p.id}')">+</button></div>
+    <div class="p-quick"><button class="wishlist-toggle ${Wishlist.has(p.id)?'saved':''}" type="button" data-wishlist-id="${p.id}" aria-label="${Wishlist.has(p.id)?'Remove from wishlist':'Save to wishlist'}" aria-pressed="${Wishlist.has(p.id)}" onclick="toggleWishlist('${p.id}')">${Wishlist.has(p.id)?'♥':'♡'}</button><button title="Quick add" onclick="quickAdd('${p.id}')">+</button></div>
     <div class="p-info">
       <span class="p-cat">${p.sub}</span>
       <h3 class="p-name"><a href="product.html?id=${p.id}">${p.name}</a></h3>
@@ -226,6 +265,13 @@ function quickAdd(pid){
   const first=p.sizes.find(s=>s.q>0);
   if(!first){toast('Out of stock');return}
   if(Cart.add(pid,first.s,p.colors[0].n)){openCartDrawer()}
+}
+
+function reviewHTML(review){
+  const rating=Math.max(1,Math.min(5,Number(review.rating)||1));
+  const date=new Date(review.createdAt);
+  const dateText=Number.isNaN(date.getTime())?'':date.toLocaleDateString();
+  return `<article class="review-card"><div class="review-stars" aria-label="${rating} out of 5 stars">${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</div><strong>${escapeHTML(review.title)}</strong><p>${escapeHTML(review.text)}</p><small>${escapeHTML(review.name)}${dateText?' · '+escapeHTML(dateText):''}</small></article>`;
 }
 
 /* ---------- reveal on scroll ---------- */

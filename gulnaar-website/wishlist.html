@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#420D16">
+<title>My Wishlist — Khan</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<script src="assets/products.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>renderChrome('wishlist.html')</script>
+
+<section class="page-hero">
+  <div class="container"><h1>Your Wishlist</h1><p>Keep your favourite pieces close. Your wishlist is saved on this device.</p></div>
+</section>
+<section class="section">
+  <div class="container">
+    <div class="toolbar"><span class="count" id="wishlistCount"></span><button class="btn btn-ghost btn-sm" id="clearWishlist" type="button">Clear wishlist</button></div>
+    <div class="grid-products" id="wishlistGrid"></div>
+  </div>
+</section>
+<script>
+(async function(){
+  const catalog=await loadProductCatalog();
+  function renderWishlist(){
+    const products=Wishlist.all().map(id=>catalog.find(product=>product.id===id)).filter(Boolean);
+    $('#wishlistCount').textContent=products.length+' saved item'+(products.length===1?'':'s');
+    $('#clearWishlist').style.display=products.length?'':'none';
+    $('#wishlistGrid').innerHTML=products.length
+      ?products.map(cardHTML).join('')
+      :'<div class="wishlist-empty"><div aria-hidden="true">♡</div><h2>Your wishlist is waiting</h2><p>Tap the heart on anything you love and it will be saved here.</p><a class="btn btn-primary" href="shop.html">Explore the collection</a></div>';
+    updateWishlistButtons();
+    initReveal();
+  }
+  document.addEventListener('wishlist:change',renderWishlist);
+  $('#clearWishlist').addEventListener('click',()=>{LS.set(Wishlist.key,[]);document.dispatchEvent(new CustomEvent('wishlist:change'))});
+  renderWishlist();
+})();
+</script>
+</body>
+</html>
